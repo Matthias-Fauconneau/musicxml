@@ -1,38 +1,27 @@
-use std::fs;
-use std::io::BufReader;
+use serde::Deserialize;
 
-fn main() {
-    std::process::exit(real_main());
+#[derive(Debug, Deserialize)]
+struct Note {
 }
 
-fn real_main() -> i32 {
-    let args: Vec<_> = std::env::args().collect();
-    if args.len() < 2 {
-        println!("Usage: {} <filename>", args[0]);
-        return 1;
-    }
-    let fname = std::path::Path::new(&*args[1]);
-    let file = fs::File::open(&fname).unwrap();
-    let reader = BufReader::new(file);
+#[derive(Debug, Deserialize)]
+struct Measure {
+    #[serde(rename="note", default)]
+    pub notes: Vec<Note>
+}
 
-    let mut archive = zip::ZipArchive::new(reader).unwrap();
+#[derive(Debug, Deserialize)]
+struct Part {
+    #[serde(rename="measure", default)]
+    pub measures: Vec<Measure>
+}
 
-    for i in 0..archive.len() {
-        let file = archive.by_index(i).unwrap();
-        let outpath = file.sanitized_name();
+#[derive(Debug, Deserialize)]
+struct ScorePartwise {
+    pub part : Part
+}
 
-        {
-            let comment = file.comment();
-            if !comment.is_empty() {
-                println!("Entry {} comment: {}", i, comment);
-            }
-        }
-
-        if (&*file.name()).ends_with('/') {
-            println!("Entry {} is a directory with name \"{}\"", i, outpath.as_path().display());
-        } else {
-            println!("Entry {} is a file with name \"{}\" ({} bytes)", i, outpath.as_path().display(), file.size());
-        }
-    }
-    return 0;
+#[fehler::throws(anyhow::Error)] fn main() {
+    let score: ScorePartwise = serde_xml_rs::from_reader(std::fs::File::open("../test.xml")?)?;
+    println!("{:#?}", score);
 }
