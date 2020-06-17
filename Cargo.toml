@@ -5,8 +5,8 @@ authors = ['Matthias Fauconneau <matthias.fauconneau@gmail.com>']
 edition = '2018'
 
 [dependencies]
-anyhow = ''
 fehler = ''
+anyhow = ''
+try-extend = { path = '../try-extend' }
 serde = { version = '', features = ['derive'] }
 serde-xml-rs = ''
-simple_logger = ''
