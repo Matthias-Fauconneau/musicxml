@@ -7,6 +7,5 @@ edition = '2018'
 [dependencies]
 fehler = ''
 anyhow = ''
-try-extend = { path = '../try-extend' }
 serde = { version = '', features = ['derive'] }
-serde-xml-rs = ''
+roxmltree = ''
