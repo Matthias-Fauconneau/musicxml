@@ -1,16 +1,29 @@
-//#![allow(unreachable_code)]
+pub trait OptionExt<T> { fn try_map<E, U, F:FnOnce(T)->Result<U, E>>(self, f: F) -> Result<Option<U>, E>; }
+impl<T> OptionExt<T> for Option<T> {
+	fn try_map<E, U, F:FnOnce(T) ->Result<U, E>>(self, f: F) -> Result<Option<U>, E> { self.map(f).transpose() }
+}
+
 mod error {
 #[derive(Debug)] pub struct Error(anyhow::Error);
 impl std::fmt::Display for Error { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) } }
 impl std::error::Error for Error {}
 impl serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(anyhow::Error::msg(msg.to_string())) } }
+impl From<anyhow::Error> for Error { fn from(t: anyhow::Error) -> Self { Error(t) } }
 }
 
 /// ~serde/quick-xml with roxmltree
 
+#[derive(Clone)]
 pub struct Deserializer<'de> {
 	attributes: std::iter::Peekable<std::slice::Iter<'de, roxmltree::Attribute<'de>>>,
 	children: std::iter::Peekable<roxmltree::Children<'de, 'de>>
+}
+
+impl std::fmt::Debug for Deserializer<'_> {
+	#[throws(std::fmt::Error)] fn fmt(&self, f: &mut std::fmt::Formatter) {
+		use itertools::Itertools;
+		write!(f, "[{:?}] [{:?}]", self.attributes.clone().format(" "), self.children.clone().format(" "))?
+	}
 }
 
 impl<'de> Deserializer<'de> {
@@ -46,38 +59,51 @@ impl<'t, 'de> serde::Deserializer<'de> for &'t mut Deserializer<'de> {
 		visitor.visit_seq(Seq{name: self.children.peek().map(|c| c.tag_name().name()), iter: &mut self.children})?
 	}
 
-	#[throws(Self::Error)] fn deserialize_struct<V: Visitor<'de>>(self, _name: &'static str, _fields: &'static [&'static str], visitor: V) -> V::Value {
-		println!("struct {} {:?}", _name, _fields);
-		impl<'t, 'de> de::MapAccess<'de> for Deserializer<'de> {
+	#[throws(Self::Error)] fn deserialize_struct<V: Visitor<'de>>(self, name: &'static str, _fields: &'static [&'static str], visitor: V) -> V::Value {
+		struct Struct<'t, 'de>{de: Deserializer<'de>, next_value: Option<&'t str>}
+		impl<'t, 'de: 't> de::MapAccess<'de> for Struct<'t, 'de> {
 			type Error = error::Error;
 
-			#[throws(error::Error)] fn next_key_seed<K: DeserializeSeed<'de>>(&mut self, seed: K) -> Option<K::Value> {
-				if let Some(a) = self.attributes.peek() {
-					Some(seed.deserialize(<&str as IntoDeserializer<Self::Error>>::into_deserializer(a.name()))?)
-				} else
-				if let Some(c) = self.children.peek() {
-					Some(seed.deserialize(<&str as IntoDeserializer<Self::Error>>::into_deserializer(c.tag_name().name()))?)
-				} else
-				{ None }
+			#[throws(Self::Error)] fn next_key_seed<K: DeserializeSeed<'de>>(&mut self, seed: K) -> Option<K::Value> {
+								 self.de.attributes.next().map(|a| (a.name(), Some(a.value())) )
+				.or_else(|| self.de.children .by_ref().filter(|e| e.is_element()) .next().map(|c| (c.tag_name().name(), None) ))
+				.try_map(|(name,value)| {
+					println!("key '{}'", name);
+					assert!(!name.is_empty());
+					self.next_value = value;
+					seed.deserialize(<&str as IntoDeserializer<Self::Error>>::into_deserializer(name))
+				})?
 			}
 			#[throws(Self::Error)] fn next_value_seed<V: DeserializeSeed<'de>>(&mut self, seed: V) -> V::Value {
-				if let Some(a) = self.attributes.next() {
-					seed.deserialize(<&str as IntoDeserializer<Self::Error>>::into_deserializer(a.value()))?
-				} else
-				{ seed.deserialize(&mut *self)? }
-				//{ throw!(Self::Error::custom("Missing value for key")) }
+				println!("value from '{:?}'", self.next_value.as_ref().map(|v| v as &dyn std::fmt::Debug).unwrap_or(&self.de));
+				if let Some(value) = self.next_value {
+					seed.deserialize(<&str as IntoDeserializer<Self::Error>>::into_deserializer(value))?
+				} else {
+					seed.deserialize(&mut self.de)?
+				}
 			}
 		}
-		let child = self.children.next().ok_or_else(|| Self::Error::invalid_type(de::Unexpected::Other("End"), &visitor))?;
-		visitor.visit_map(Deserializer::new(child))?
-    }
+
+		println!("struct {} {:?}", name, _fields);
+		println!("in {:?}", self);
+		//let context = self.clone(); // Clone iterators before consumption to be reported on missing tag
+		//use anyhow::Context;
+		let child = self.children .by_ref().filter(|e| e.is_element()) .filter(|e| e.tag_name().name() == name) .next()
+			.ok_or_else(|| Self::Error::invalid_type(de::Unexpected::Other("End"), &visitor))?; //.with_context(|| format!("({:?})", context))?;
+		println!("from {:?}", &child);
+		//macro_rules! trace { {$e:expr} => { let v = $e; eprintln!("{}", line!()); v } } // breaks fehler
+		//trace!{ visitor.visit_map(Deserializer::new(child))? }
+		let v = visitor.visit_map(Struct{de: Deserializer::new(child), next_value: None})?; eprintln!("{}", line!()); v
+	}
 
 	#[throws(Self::Error)] fn deserialize_enum<V: Visitor<'de>>(self, _name: &'static str, _variants: &'static [&'static str], visitor: V) -> V::Value {
 		struct Enum<'t, 'de>(&'t mut Deserializer<'de>);
 		impl<'t, 'de> de::EnumAccess<'de> for Enum<'t, 'de> {
 			type Error = error::Error;
 			type Variant = Self;
-			#[throws(Self::Error)] fn variant_seed<V: DeserializeSeed<'de>>(self, seed: V) -> (V::Value, Self::Variant) { (seed.deserialize(&mut *self.0)?, self) }
+			#[throws(Self::Error)] fn variant_seed<V: DeserializeSeed<'de>>(self, seed: V) -> (V::Value, Self::Variant) {
+				(seed.deserialize(&mut *self.0)?, self)
+			}
 		}
 		impl<'t, 'de> de::VariantAccess<'de> for Enum<'t, 'de> {
 			type Error = error::Error;

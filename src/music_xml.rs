@@ -23,7 +23,7 @@ pub struct Part {
 	measure: Vec<Measure>
 }
 
-#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+#[derive(Debug, Deserialize)]#[serde(rename="score-partwise", rename_all="kebab-case")]
 pub struct ScorePartwise {
     part : Part
 }

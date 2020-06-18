@@ -9,3 +9,4 @@ fehler = ''
 anyhow = ''
 serde = { version = '', features = ['derive'] }
 roxmltree = ''
+itertools = '' # debug
