@@ -5,12 +5,34 @@ use serde::Deserialize;
 pub struct Print {
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="attributes",rename_all="kebab-case")]
+pub struct Attributes {
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="direction",rename_all="kebab-case")]
+pub struct Direction {
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="note",rename_all="kebab-case")]
+pub struct Note {
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="backup",rename_all="kebab-case")]
+pub struct Backup {
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="barline",rename_all="kebab-case")]
+pub struct Barline {
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
 pub enum MusicData {
 	Print(Print),
-	Attributes,
-	Direction,
-	Note,
+	Attributes(Attributes),
+	Direction(Direction),
+	Note(Note),
+	Backup(Backup),
+	Barline(Barline)
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="measure",rename_all="kebab-case")]
