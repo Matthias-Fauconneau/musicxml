@@ -32,11 +32,11 @@ pub struct Deserializer<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> (&
 
 use {fehler::*, serde::de::{self, Visitor, Deserializer as deserialize, DeserializeSeed, IntoDeserializer, Error as invalid_type}};
 
-impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::Deserializer<'de> for Deserializer<'t, 'de, I> {
+impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>+Clone> de::Deserializer<'de> for Deserializer<'t, 'de, I> {
 	type Error = error::Error;
 
 	#[throws(Self::Error)] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		println!("any expects {}", &visitor as &dyn de::Expected);
+		//println!("any expects {}", &visitor as &dyn de::Expected);
 		self.deserialize_struct("", &[], visitor)?
 	}
 
@@ -47,19 +47,26 @@ impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::Deserializer<'de>
 	}
 
 	#[throws(Self::Error)] fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		struct Seq<'t, 'de: 't, I: Iterator<Item=roxmltree::Node<'de, 'de>>>{name: Option<&'t str>, iter: &'t mut std::iter::Peekable<I>}
-		impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::SeqAccess<'de> for Seq<'t, 'de, I> {
+		struct Seq<'t, 'de: 't, I: Iterator<Item=roxmltree::Node<'de, 'de>>>{
+			//name: Option<&'t str>,
+			iter: &'t mut std::iter::Peekable<I>
+		}
+		impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>+Clone> de::SeqAccess<'de> for Seq<'t, 'de, I> {
 			type Error = error::Error;
 			#[throws(Self::Error)] fn next_element_seed<T: DeserializeSeed<'de>>(&mut self, seed: T) -> Option<T::Value> {
 				println!("element '{:?}'", self.iter.peek());
-				if let Some(child) = self.iter.peek() { if self.name.map_or(true, |name| child.tag_name().name() == name) {
+				//self.iter.peek().try_map(|_| seed.deserialize(Deserializer(&mut self.iter)) )? borrow conflict
+				//self.iter.peek().is_some().then(|| seed.deserialize(Deserializer(&mut self.iter)))? bool_to_option
+				if self.iter.peek().is_some() { Some(seed.deserialize(Deserializer(&mut self.iter))?) } else { None }
+				/*if let Some(child) = self.iter.peek() { //if self.name.map_or(true, |name| child.tag_name().name() == name) {
 					//Some(seed.deserialize(Deserializer(&mut self.iter.next().unwrap().children().peekable()))?)
 					Some(seed.deserialize(Deserializer(&mut self.iter))?) // deserialize_struct enter nodes, seq is external
-				} else { None } } else { None }
+				//} else { None }
+				} else { None }*/
 			}
 		}
-		println!("seq '{:?}'", self.0.peek().map(|c| c.tag_name().name()));
-		visitor.visit_seq(Seq{name: self.0.peek().map(|c| c.tag_name().name()), iter: self.0})?
+		//println!("seq '{:?}'", self.0.peek().map(|c| c.tag_name().name()));
+		visitor.visit_seq(Seq{/*name: self.0.peek().map(|c| c.tag_name().name()),*/ iter: self.0})?
 	}
 
 	#[throws(Self::Error)]
@@ -72,7 +79,7 @@ impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::Deserializer<'de>
 		}
 		//use itertools::Itertools;
 		// std::iter::Filter<roxmltree::Children<'de, 'de>, for<'r0,'r1,'r2> fn(&'r0 roxmltree::Node<'r1,'r2>)->bool>
-		impl<'de, C: Iterator<Item=roxmltree::Node<'de, 'de>>> de::MapAccess<'de> for Struct<'de, C> {
+		impl<'de, C: Iterator<Item=roxmltree::Node<'de, 'de>>+Clone> de::MapAccess<'de> for Struct<'de, C> {
 			type Error = error::Error;
 
 			//#[throws(Self::Error)]
@@ -107,20 +114,23 @@ impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::Deserializer<'de>
 					}
 					seed.deserialize(Deserializer(value))
 				} else {
-					println!("value peek '{:?}'", self.children.peek());
+					//println!("value peek '{:?}'", self.children.peek());
 					seed.deserialize(Deserializer(&mut self.children))
 				}
 			}
 		}
 
+		//if !name.is_empty() {
 		println!("struct '{}' {:?}", name, fields);
-		//println!("in {:?}", self.0.clone().format(" "));
+		//}
+		//use itertools::Itertools; //println!("in {:?}", self.0.clone().format(" "));
 		//let context = self.clone(); // Clone iterators before consumption to be reported on missing tag
 		//use anyhow::Context;
 		//assert!(!name.is_empty());
+		//println!("next");
 		let child = self.0 .by_ref().filter(|e| e.is_element()) .filter(|e| name.is_empty() || e.tag_name().name() == name) .next()
 			.ok_or_else(|| Self::Error::invalid_type(de::Unexpected::Other("End"), &visitor))?; //.with_context(|| format!("({:?})", context))?;
-		println!("from {:?}", &child);
+		//println!("from {:?}", &child);
 		//macro_rules! trace { {$e:expr} => { let v = $e; eprintln!("{}", line!()); v } } // breaks fehler
 		//trace!{ visitor.visit_map(Deserializer::new(child))? }
 		visitor.visit_map(Struct{
@@ -133,20 +143,21 @@ impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::Deserializer<'de>
 
 	#[throws(Self::Error)] fn deserialize_enum<V: Visitor<'de>>(self, _name: &'static str, _variants: &'static [&'static str], visitor: V) -> V::Value {
 		struct Enum<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>>(Deserializer<'t, 'de, I>);
-		impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::EnumAccess<'de> for Enum<'t, 'de, I> {
+		impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>+Clone> de::EnumAccess<'de> for Enum<'t, 'de, I> {
 			type Error = error::Error;
 			type Variant = Self;
 			//#[allow(unreachable_code)]
 			#[throws(Self::Error)] fn variant_seed<V: DeserializeSeed<'de>>(self, seed: V) -> (V::Value, Self::Variant) {
 				//use itertools::Itertools; panic!("{:?}", (self.0).0.format(" "))
-				let tag = (self.0).0.next().ok_or_else(|| Self::Error::invalid_type(de::Unexpected::Other("End"), &"tag"))?.tag_name().name();
+				let tag = (self.0).0.peek().ok_or_else(|| Self::Error::invalid_type(de::Unexpected::Other("End"), &"tag"))?.tag_name().name();
 				//(seed.deserialize(tag.into_deserializer())?, self)
+				println!("{}", tag);
 				(seed.deserialize::<de::value::StrDeserializer<Self::Error>>(de::IntoDeserializer::into_deserializer(tag))?, self)
 			}
 		}
-		impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>> de::VariantAccess<'de> for Enum<'t, 'de, I> {
+		impl<'t, 'de, I: Iterator<Item=roxmltree::Node<'de, 'de>>+Clone> de::VariantAccess<'de> for Enum<'t, 'de, I> {
 			type Error = error::Error;
-			#[throws(Self::Error)] fn unit_variant(self) {}
+			#[allow(unreachable_code)] #[throws(Self::Error)] fn unit_variant(self) { use itertools::Itertools; panic!("{:?}", (self.0).0.format(" ")) }
 			#[throws(Self::Error)] fn newtype_variant_seed<T: DeserializeSeed<'de>>(self, seed: T) -> T::Value { seed.deserialize(self.0)? }
 			#[throws(Self::Error)] fn tuple_variant<V: Visitor<'de>>(self, _len: usize, visitor: V) -> V::Value { self.0.deserialize_seq(visitor)? }
 			#[throws(Self::Error)] fn struct_variant<V: Visitor<'de>>(self, _fields: &'static [&'static str], visitor: V) -> V::Value { self.0.deserialize_map(visitor)? }
