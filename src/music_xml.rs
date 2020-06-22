@@ -13,8 +13,31 @@ pub struct Attributes {
 pub struct Direction {
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="step")]
+pub enum Step { A,B,C,D,E,F,G }
+
+#[derive(Debug, Deserialize)]#[serde(rename="pitch",rename_all="kebab-case")]
+pub struct Pitch {
+	step: Step
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="rest",rename_all="kebab-case")]
+pub struct Rest {
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum NoteData {
+	Pitch(Pitch),
+	Rest(Rest),
+	//Unpitched(Unpitched),
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="note",rename_all="kebab-case")]
 pub struct Note {
+	default_x: f32, default_y: f32,
+	chord: Option<()>,
+	#[serde(rename="$content")]
+	content: NoteData,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="backup",rename_all="kebab-case")]
@@ -46,10 +69,16 @@ pub struct Measure {
 #[derive(Debug, Deserialize)]#[serde(rename="part",rename_all="kebab-case")]
 pub struct Part {
 	id: String,
-	measure: Vec<Measure>
+	#[serde(rename="$content")]
+	content: Vec<Measure>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="score-partwise")]
 pub struct ScorePartwise {
     part : Part
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="",rename_all="kebab-case")]
+pub struct MusicXML {
+    score_partwise: ScorePartwise
 }
