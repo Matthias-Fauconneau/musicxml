@@ -25,13 +25,19 @@ use {fehler::*, ::serde::de::{self, Visitor, Deserializer, IntoDeserializer}};
 struct AttributeDeserializer<'de>(&'de str);
 impl<'de> Deserializer<'de> for AttributeDeserializer<'de> {
 	type Error = Error;
-	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u32::<Self::Error>(self.0.parse()?)? }
-	#[throws] fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_f32::<Self::Error>(self.0.parse()?)? }
-	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_str::<Self::Error>(self.0)? }
+	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
+		println!("attribute any->str {}", &visitor as &dyn de::Expected);
+		visitor.visit_str::<Error>(self.0)?
+	}
+	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
+	#[throws] fn deserialize_str<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_str::<Error>(self.0)? }
+	#[throws] fn deserialize_string<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_string::<Error>(self.0.to_owned())? }
+	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u32::<Error>(self.0.parse()?)? }
+	#[throws] fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_f32::<Error>(self.0.parse()?)? }
 	::serde::forward_to_deserialize_any!{
-		char bytes byte_buf str string identifier bool
+		char bytes byte_buf identifier bool
 		u8 u16 u64 u128 i8 i16 i32 i64 i128 f64
-		option unit unit_struct newtype_struct tuple tuple_struct struct enum seq map ignored_any
+		unit unit_struct newtype_struct tuple tuple_struct struct enum seq map ignored_any
 	}
 }
 
@@ -63,6 +69,14 @@ impl<'de> Deserializer<'de> for NodeDeserializer<'de> {
 	type Error = Error;
 	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value { println!("{}", &visitor as &dyn de::Expected); self.deserialize_map(visitor)? }
 
+	#[throws] fn deserialize_str<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
+		println!("str");
+		let text = self.children.next().ok_or_else(|| anyhow::Error::msg("Expected variant"))?;
+		ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected unit variant");
+		visitor.visit_str::<Error>(text.text().unwrap())?
+    }
+	#[throws] fn deserialize_string<V: Visitor<'de>>(self, visitor: V) -> V::Value { self.deserialize_str(visitor)? }
+
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> V::Value {
 		println!("seq");
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::new(self.children.filter(|child| child.is_element()).map(|child| {
@@ -91,7 +105,10 @@ impl<'de> Deserializer<'de> for NodeDeserializer<'de> {
 						} else if fields.contains(&"$content") && child.is_element() {
 							println!("no field '{}' in {:?}, deserializing to $content", name, fields);
 							break Some(("$content", Value::Content(ContentDeserializer(node.take().unwrap())))); // Content flatten => tag enum
-						} else { node.as_mut().unwrap().children.next(); }
+						} else {
+							assert!(!child.is_element(), "Ignored {:?}", child); // Helps complete format
+							node.as_mut().unwrap().children.next();
+						}
 					} else { break None; }
 				}
 			}
@@ -102,7 +119,7 @@ impl<'de> Deserializer<'de> for NodeDeserializer<'de> {
 		println!("enum '{}' {:?} {:?}", name, variants, self.name);
 		if name ==  self.name {
 			let text = self.children.next().ok_or_else(|| anyhow::Error::msg("Expected variant"))?;
-			assert!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "{:?}", self);
+			ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected unit variant");
 			visitor.visit_enum(<&str as IntoDeserializer<Error>>::into_deserializer(text.text().unwrap()))?
 		} else {
 			visitor.visit_enum(::serde::de::value::MapAccessDeserializer::new(::serde::de::value::MapDeserializer::new(std::iter::once((self.name, self)))))?
@@ -116,7 +133,7 @@ impl<'de> Deserializer<'de> for NodeDeserializer<'de> {
 	}
 
 	::serde::forward_to_deserialize_any!{
-		char bytes byte_buf str string identifier bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 f32 f64 unit_struct newtype_struct tuple tuple_struct ignored_any
+		char bytes byte_buf identifier bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 f32 f64 unit_struct newtype_struct tuple tuple_struct ignored_any
 	}
 }
 

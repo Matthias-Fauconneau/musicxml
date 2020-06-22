@@ -34,7 +34,7 @@ pub enum NoteData {
 
 #[derive(Debug, Deserialize)]#[serde(rename="note",rename_all="kebab-case")]
 pub struct Note {
-	default_x: f32, default_y: f32,
+	default_x: Option<f32>, default_y: Option<f32>,
 	chord: Option<()>,
 	#[serde(rename="$content")]
 	content: NoteData,
@@ -73,9 +73,15 @@ pub struct Part {
 	content: Vec<Measure>
 }
 
-#[derive(Debug, Deserialize)]#[serde(rename="score-partwise")]
+#[derive(Debug, Deserialize)]#[serde(rename="work",rename_all="kebab-case")]
+pub struct Work {
+	work_title: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="score-partwise",rename_all="kebab-case")]
 pub struct ScorePartwise {
-    part : Part
+	work: Option<Work>,
+    part : Vec<Part>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="",rename_all="kebab-case")]
