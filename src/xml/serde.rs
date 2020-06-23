@@ -4,6 +4,7 @@ macro_rules! dispatch {
 			Self::Attribute(x) => x.$method($($arg),*),
 			Self::Node(x) => x.$method($($arg),*),
 			Self::Content(x) => x.$method($($arg),*),
+			Self::Seq(x) => x.$method($($arg),*),
 		}
 	)
 }
@@ -16,7 +17,7 @@ macro_rules! delegate {
 
 macro_rules! delegatable_trait {
 	{ $t:ident } => {
-		impl<'de> Deserializer<'de> for $t<'de> {
+		impl<'t, 'de> Deserializer<'de> for $t<'t, 'de> {
 			type Error = Error;
 			delegate! {
 				fn deserialize_any<V:Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error>;
@@ -49,11 +50,7 @@ macro_rules! delegatable_trait {
 				fn deserialize_identifier<V:Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error>;
 				fn deserialize_ignored_any<V:Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error>;
 			}
-			fn is_human_readable(&self) -> bool { dispatch!(self, is_human_readable()) }
+			fn is_human_readable(&self) -> bool { true /*dispatch!(self, is_human_readable())*/ }
 		}
 	}
-}
-
-macro_rules! IntoDeserializer_for_Deserializer {
-	{ $p:ident } => { impl<'de> ::serde::de::IntoDeserializer<'de, Error> for $p<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } } }
 }
