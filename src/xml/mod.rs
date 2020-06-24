@@ -20,7 +20,7 @@ macro_rules! ensure { ($cond:expr, $($arg:tt)*) => { if !$cond { bail!($($arg)*)
 mod content; use content::ContentDeserializer;
 mod seq; use seq::SeqDeserializer;
 
-use {fehler::*, ::serde::de::{self, Visitor, Deserializer, IntoDeserializer}};
+use {fehler::*, ::serde::de::{self, Visitor, Deserializer}};
 
 ///
 
@@ -36,7 +36,7 @@ struct TextDeserializer<'de>(&'de str);
 impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 	type Error = Error;
 	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		println!("text any->str {}", &visitor as &dyn de::Expected);
+		if !self.0.trim().is_empty() { println!("text any->str {}", &visitor as &dyn de::Expected); }
 		visitor.visit_str::<Error>(self.0)?
 	}
 	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
@@ -50,8 +50,13 @@ impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 	#[throws] fn deserialize_i32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i32::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_f32::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_bool::<Error>(/*self.0.parse()*/from_yes_no(self.0)?)? }
+	#[throws] fn deserialize_enum<V: Visitor<'de>>(self, _name: &'static str, _variants: &'static [&'static str], visitor: V) -> V::Value {
+		visitor.visit_enum(<&str as ::serde::de::IntoDeserializer<Error>>::into_deserializer(self.0))?
+		//visitor.visit_enum::<Error>(self.0.into_deserializer()?)?
+	}
+
 	::serde::forward_to_deserialize_any!{
-		char bytes byte_buf identifier u64 u128 i64 i128 f64 unit unit_struct newtype_struct tuple tuple_struct struct enum seq map ignored_any}
+		char bytes byte_buf identifier u64 u128 i64 i128 f64 unit unit_struct newtype_struct tuple tuple_struct struct seq map ignored_any}
 }
 
 pub struct ElementDeserializer<'de> {
@@ -127,7 +132,7 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 		let mut index = 0;
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
-			println!("back to struct '{}' {:?} '{}' {}", name, fields, node.name, index);
+			//println!("back to struct '{}' {:?} '{}' {}", name, fields, node.name, index);
 			if let Some(a) = node.attributes.peek() {
 				println!("attribute {}", a.name());
 				if fields.contains(&a.name()) {
@@ -168,7 +173,7 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 						} } /*else*/ if child.is_text() /*/*&&*/{ if let Some((field,_)) = fields_iter.clone().find(|(_,(_,def))| def==&"$")*/ {
 							//println!("deserializing remaining content to {}", field);
 							//break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
-							println!("deserializing text {:?} to {}", child, "$");
+							if !child.text().unwrap().trim().is_empty() { println!("deserializing text {:?} to {}", child, "$"); }
 							break Some(("$", Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
 						} /*else*/ {
 							if child.is_text() && child.text().unwrap().trim().is_empty() {
@@ -190,9 +195,7 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
 		println!("enum '{}' {:?} {:?}", name, variants, self.name);
 		if name ==  self.name {
-			let text = self.children.next().ok_or_else(|| anyhow::Error::msg("Expected variant"))?;
-			ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected unit variant");
-			visitor.visit_enum(<&str as IntoDeserializer<Error>>::into_deserializer(text.text().unwrap()))?
+			TextDeserializer(self.simple_content()?).deserialize_enum(name, variants, visitor)?
 		} else {
 			visitor.visit_enum(::serde::de::value::MapAccessDeserializer::new(::serde::de::value::MapDeserializer::new(std::iter::once((self.name, self)))))?
 		}

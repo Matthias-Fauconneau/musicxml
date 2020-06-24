@@ -169,6 +169,9 @@ pub struct StaffLayout {
 
 #[derive(Debug, Deserialize)]#[serde(rename="print",rename_all="kebab-case")]
 pub struct Print {
+	// print-attributes
+	new_system: Option<bool>,
+	new_page: Option<bool>,
 	system_layout: Option<SystemLayout>,
 	#[serde(rename="*")]
 	staff_layout: Vec<StaffLayout>,
@@ -219,11 +222,20 @@ pub struct Dynamics {
 	#[serde(rename="1")] text: DynamicText,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="type",rename_all="kebab-case")]
+enum WedgeType { Crescendo, Diminuendo, Stop, Continue }
+
+#[derive(Debug, Deserialize)]#[serde(rename="wedge",rename_all="kebab-case")]
+pub struct Wedge {
+	r#type: WedgeType,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
 pub enum DirectionTypeData {
 	Metronome(Metronome),
 	Words(FormattedText),
 	Dynamics(Dynamics),
+	Wedge(Wedge),
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="direction-type",rename_all="kebab-case")]
@@ -244,7 +256,8 @@ pub enum Step { A,B,C,D,E,F,G }
 
 #[derive(Debug, Deserialize)]#[serde(rename="pitch",rename_all="kebab-case")]
 pub struct Pitch {
-	step: Step
+	step: Step,
+	alter: /*-1..1*/Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="rest",rename_all="kebab-case")]
@@ -260,10 +273,11 @@ pub enum NoteData {
 
 #[derive(Debug, Deserialize)]#[serde(rename="note",rename_all="kebab-case")]
 pub struct Note {
-	default_x: Option<f32>,
-	default_y: Option<f32>,
+	#[serde(rename="0")]
+	print_style: PrintStyle,
+	duration: u32,
 	chord: Option<()>,
-	#[serde(rename="")]
+	#[serde(rename="1")]
 	content: NoteData,
 }
 
