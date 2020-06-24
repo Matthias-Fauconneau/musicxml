@@ -1,8 +1,8 @@
 macro_rules! dispatch {
 	($self:ident, $method:ident($($arg:ident),*) ) => (
 		match $self {
-			Self::Attribute(x) => x.$method($($arg),*),
-			Self::Node(x) => x.$method($($arg),*),
+			Self::Text(x) => x.$method($($arg),*),
+			Self::Element(x) => x.$method($($arg),*),
 			Self::Content(x) => x.$method($($arg),*),
 			Self::Seq(x) => x.$method($($arg),*),
 		}

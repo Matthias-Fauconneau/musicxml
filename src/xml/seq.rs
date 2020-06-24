@@ -1,7 +1,7 @@
 use {fehler::*, serde::de::{self, Visitor}};
-use super::{Error, NodeDeserializer};
+use super::{Error, ElementDeserializer};
 
-pub(super) struct SeqDeserializer<'t, 'de>{pub node: std::cell::RefMut<'t, &'t mut NodeDeserializer<'de>>, pub tag: &'t str}
+pub(super) struct SeqDeserializer<'t, 'de>{pub node: std::cell::RefMut<'t, &'t mut ElementDeserializer<'de>>, pub tag: &'t str}
 
 impl<'t, 'de> de::Deserializer<'de> for SeqDeserializer<'t, 'de> {
 	type Error = Error;
@@ -12,9 +12,8 @@ impl<'t, 'de> de::Deserializer<'de> for SeqDeserializer<'t, 'de> {
 				if let Some(child) = self.node.children.peek() {
 					if child.is_element() {
 						if child.tag_name().name() == self.tag {
-							//self.node.children.by_ref().filter(|child| child.tag_name().name() == tag).map(|child| {
 							println!("item [seq]");
-							break Some(NodeDeserializer::new(self.node.children.next().unwrap())) // Leave content context
+							break Some(ElementDeserializer::new(self.node.children.next().unwrap())) // Leave content context
 						} else { break None; }
 					} else {
 						assert!(child.is_text() && child.text().unwrap().trim().is_empty(), "Ignored {:?}", child); // Helps complete format

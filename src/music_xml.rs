@@ -6,11 +6,10 @@ pub struct Work {
 	work_title: Option<String>,
 }
 
-
 #[derive(Debug, Deserialize)]#[serde(rename="supports",rename_all="kebab-case")]
 pub struct Supports {
 	element: String,
-	r#type: /*yes,no*/String,
+	r#type: bool,
 	attribute: Option<String>,
 	value: Option<String>,
 }
@@ -65,7 +64,7 @@ pub struct Font {
 	font_family: Option<String>,
 	//font_style: Option<String>,
 	font_size: Option<u8>,
-	//font_weight: Option<String>,
+	//font_weight: Option</*normal,bold*/String>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="defaults",rename_all="kebab-case")]
@@ -79,22 +78,30 @@ pub struct Defaults {
 	//lyric_language: Vec<lyric-language>
 }
 
-/*#[derive(Debug, Deserialize)]#[serde(rename="print-style-align",rename_all="kebab-case")]
-pub struct PrintStyleAlign {
+#[derive(Debug, Deserialize)]#[serde(rename="print-style",rename_all="kebab-case")]
+pub struct PrintStyle {
 	default_x: Option<f32>,
 	default_y: Option<f32>,
+	relative_x: Option<f32>,
+	relative_y: Option<f32>,
+}
+
+/*#[derive(Debug, Deserialize)]#[serde(rename="print-style-align",rename_all="kebab-case")]
+pub struct PrintStyleAlign {
+	#[serde(rename="")]
+	print_style: PrintStyle,
 	valign: /*top,middle,bottom,baseline*/String,
 }*/
 
 #[derive(Debug, Deserialize)]#[serde(rename="formatted-text",rename_all="kebab-case")]
 pub struct FormattedText {
-	justify: /*left,center,right*/String,
-	//#[serde(flatten)] print_style_align: PrintStyleAlign,
-	default_x: Option<f32>,
-	default_y: Option<f32>,
-	valign: /*top,middle,bottom,baseline*/String,
-
+	//print_style_align: PrintStyleAlign,
+	#[serde(rename="")]
+	print_style: PrintStyle,
+	valign: /*top,middle,bottom,baseline*/Option<String>,
+	justify: /*left,center,right*/Option<String>,
 	font_size: u8,
+	font_weight: Option</*normal,bold*/String>,
 	#[serde(rename="$")]
 	content: String,
 }
@@ -142,16 +149,94 @@ pub struct PartList {
 	score_part: ScorePart,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="system-margins",rename_all="kebab-case")]
+pub struct SystemMargins {
+	left_margin: f32,
+	right_margin: f32,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="system-layout",rename_all="kebab-case")]
+pub struct SystemLayout {
+	system_margins: SystemMargins,
+	top_system_distance: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="staff-layout",rename_all="kebab-case")]
+pub struct StaffLayout {
+	number: Option<u8>,
+	staff_distance: Option<f32>,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="print",rename_all="kebab-case")]
 pub struct Print {
+	system_layout: Option<SystemLayout>,
+	#[serde(rename="*")]
+	staff_layout: Vec<StaffLayout>,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="key",rename_all="kebab-case")]
+pub struct Key {
+	fifths: i8,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="time",rename_all="kebab-case")]
+pub struct Time {
+	beats: u8,
+	beat_type: u8,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="time",rename_all="kebab-case")]
+pub struct Clef {
+	number: /*staff*/u8,
+	sign: /*F,G*/String,
+	line: /*2-5*/Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="attributes",rename_all="kebab-case")]
 pub struct Attributes {
+	divisions: Option<u16>,
+	key: Option<Key>,
+	time: Option<Time>,
+	staves: Option<u8>,
+	#[serde(rename="clef*")]
+	clefs: Vec<Clef>,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="metronome",rename_all="kebab-case")]
+pub struct Metronome {
+	parentheses: bool,
+	#[serde(rename="")] print_style: PrintStyle,
+	beat_unit: /*quarter*/String,
+	per_minute: u16,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]#[allow(non_camel_case_types)]
+pub enum DynamicText { pppppp,ppppp,pppp,ppp,pp,p,mp,mf,f,ff,fff,ffff,fffff,ffffff, sf,sfp,sfpp,fp,rf,rfz,sfz,sffz,fz,n,pf,sfzp }
+
+#[derive(Debug, Deserialize)]#[serde(rename="dynamics",rename_all="kebab-case")]
+pub struct Dynamics {
+	#[serde(rename="0")] print_style: PrintStyle,
+	#[serde(rename="1")] text: DynamicText,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum DirectionTypeData {
+	Metronome(Metronome),
+	Words(FormattedText),
+	Dynamics(Dynamics),
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="direction-type",rename_all="kebab-case")]
+pub struct DirectionType {
+	#[serde(rename="")]
+	content: DirectionTypeData,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="direction",rename_all="kebab-case")]
 pub struct Direction {
+	placement: /*above*/String,
+	#[serde(rename="direction-type+")]
+	direction_type: Vec<DirectionType>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="step")]
