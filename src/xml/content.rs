@@ -9,9 +9,9 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	//#[throws] fn deserialize_string<V: Visitor<'de>>(mut self, visitor: V) -> V::Value { visitor.visit_string::<Error>(self.0.text()?.to_owned())? }
 
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
-		println!("seq [content]");
+		//println!("seq [content]");
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::new(self.0.children.by_ref().filter(roxmltree::Node::is_element).map(|e| {
-			println!("item [content]");
+			//println!("item [content]");
 			ElementDeserializer::new(e) // Leave content context
 		})))?
 	}
@@ -21,21 +21,21 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	}
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(mut self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		println!("struct [content] '{}' {:?}", name, fields);
+		//println!("struct [content] '{}' {:?}", name, fields);
 		self.0.deserialize_struct(name, fields, visitor)?
 	}
 
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(mut self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
-		println!("enum [content {}] '{}' {:?}", self.0.name, name, variants);
+		//println!("enum [content {}] '{}' {:?}", self.0.name, name, variants);
 		let node = self.0.children.by_ref().filter(|child| child.is_element()).next().ok_or_else(|| anyhow::Error::msg("Expected variant"))?;
 		let tag = node.tag_name().name();
-		println!("variant [content {}] '{}' {:?} {:?}", self.0.name, name, tag, variants);
+		//println!("variant [content {}] '{}' {:?} {:?}", self.0.name, name, tag, variants);
 		ensure!(variants.contains(&tag), "enum [content] {}: no '{}' in {:?}", name, tag, variants);
 		visitor.visit_enum(serde::de::value::MapAccessDeserializer::new(serde::de::value::MapDeserializer::new(std::iter::once((tag, ElementDeserializer::new(node))))))?
 	}
 
 	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		println!("content 'any {}'", &visitor as &dyn de::Expected);
+		//println!("content 'any {}'", &visitor as &dyn de::Expected);
 		self.deserialize_map(visitor)?
 	}
 	serde::forward_to_deserialize_any!{

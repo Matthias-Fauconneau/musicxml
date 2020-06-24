@@ -6,13 +6,13 @@ pub(super) struct SeqDeserializer<'t, 'de>{pub node: std::cell::RefMut<'t, &'t m
 impl<'t, 'de> de::Deserializer<'de> for SeqDeserializer<'t, 'de> {
 	type Error = Error;
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
-		println!("seq [seq]");
+		//println!("seq [seq]");
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::new( std::iter::from_fn(||
 			loop {
 				if let Some(child) = self.node.children.peek() {
 					if child.is_element() {
 						if child.tag_name().name() == self.tag {
-							println!("item [seq]");
+							//println!("item [seq]");
 							break Some(ElementDeserializer::new(self.node.children.next().unwrap())) // Leave content context
 						} else { break None; }
 					} else {

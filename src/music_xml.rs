@@ -251,6 +251,43 @@ pub struct Direction {
 	direction_type: Vec<DirectionType>,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum NoteTypeValue {
+	#[serde(rename="1024th")] _1024th,
+	#[serde(rename="512th")] _512th,
+	#[serde(rename="256th")] _256th,
+	#[serde(rename="128th")] _128th,
+	#[serde(rename="64th")] _64th,
+	#[serde(rename="32th")] _32th,
+	#[serde(rename="16th")] _16th,
+	Eighth, Quarter, Half, Whole, Breve, Long, Maxima
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="note-type",rename_all="kebab-case")]
+pub struct NoteType {
+	value: Option<NoteTypeValue>,
+	//size: SymbolSize,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="tie",rename_all="kebab-case")]
+pub struct Tie {
+	r#type: /*start,stop*/String,
+	//time-only: Option
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum StemValue {
+	Down, Up, Double, None
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="stem",rename_all="kebab-case")]
+pub struct Stem {
+	#[serde(rename="")]
+	r#value: StemValue,
+	//y-position
+	//color
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="step")]
 pub enum Step { A,B,C,D,E,F,G }
 
@@ -258,6 +295,7 @@ pub enum Step { A,B,C,D,E,F,G }
 pub struct Pitch {
 	step: Step,
 	alter: /*-1..1*/Option<f32>,
+	octave: Option</*0-9=4*/u8>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="rest",rename_all="kebab-case")]
@@ -277,6 +315,12 @@ pub struct Note {
 	print_style: PrintStyle,
 	duration: u32,
 	chord: Option<()>,
+	voice: Option<u8>,
+	r#type: Option<NoteType>,
+	#[serde(rename="tie{0,2}")]
+	ties: Vec<Tie>,
+	staff: Option</*1-*/u8>,
+	stem: Option<Stem>,
 	#[serde(rename="1")]
 	content: NoteData,
 }
@@ -285,8 +329,19 @@ pub struct Note {
 pub struct Backup {
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="ending",rename_all="kebab-case")]
+pub struct Ending {
+	number: u8,
+	r#type: /*start,stop,discontinue*/String,
+	#[serde(rename="")]
+	print_style: PrintStyle,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="barline",rename_all="kebab-case")]
 pub struct Barline {
+	location: /*right,left,middle*/String,
+	bar_style: /*enum*/Option<String>,
+	ending: Option<Ending>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
