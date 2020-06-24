@@ -244,8 +244,18 @@ pub struct DirectionType {
 	content: DirectionTypeData,
 }
 
+type Staff = /*1-*/u8;
+#[allow(non_camel_case_types)] type uf32 = /*0-*/f32;
+
+#[derive(Debug, Deserialize)]#[serde(rename="sound",rename_all="kebab-case")]
+pub struct Sound {
+	dynamics: Option<uf32>,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="direction",rename_all="kebab-case")]
 pub struct Direction {
+	staff: Option<Staff>,
+	sound: Sound,
 	placement: /*above*/String,
 	#[serde(rename="direction-type+")]
 	direction_type: Vec<DirectionType>,
@@ -319,7 +329,7 @@ pub struct Note {
 	r#type: Option<NoteType>,
 	#[serde(rename="tie{0,2}")]
 	ties: Vec<Tie>,
-	staff: Option</*1-*/u8>,
+	staff: Option<Staff>,
 	stem: Option<Stem>,
 	#[serde(rename="1")]
 	content: NoteData,

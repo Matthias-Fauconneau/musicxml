@@ -77,56 +77,8 @@ impl<'de> ElementDeserializer<'de> {
 		assert!(node.is_element() || node.is_root(), "{:?}", node);
 		Self{name: node.tag_name().name(), attributes: node.attributes().iter().peekable(), children: node.children().peekable()}
 	}
-	#[throws] fn simple_content(&mut self) -> &'de str {
-		let text = self.children.next().ok_or_else(|| anyhow::Error::msg("Expected simple content"))?;
-		ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected simple content");
-		text.text().unwrap()
-    }
-}
 
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for TextDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for &mut ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for ContentDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for SeqDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-
-enum Value<'t, 'de> { Text(TextDeserializer<'de>), Element(ElementDeserializer<'de>), Content(ContentDeserializer<'t, 'de>), Seq(SeqDeserializer<'t, 'de>) }
-delegatable_trait!{Value}
-impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for Value<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-
-impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
-	type Error = Error;
-	#[throws] fn deserialize_unit<V:Visitor<'de>>(self, visitor: V) -> V::Value {
-		assert!(self.attributes.next().is_none() && self.children.next().is_none());
-		visitor.visit_unit::<Error>()?
-	}
-	#[throws] fn deserialize_str<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_str(visitor)? }
-	#[throws] fn deserialize_string<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_string(visitor)? }
-	#[throws] fn deserialize_u8<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_u8(visitor)? }
-	#[throws] fn deserialize_u16<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_u16(visitor)? }
-	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_u32(visitor)? }
-	#[throws] fn deserialize_i8<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_i8(visitor)? }
-	#[throws] fn deserialize_i16<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_i16(visitor)? }
-	#[throws] fn deserialize_i32<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_i32(visitor)? }
-	#[throws] fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_f32(visitor)? }
-	#[throws] fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_bool(visitor)? }
-
-	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
-
-	#[throws] fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		//println!("seq {:?}", self.name);
-		visitor.visit_seq(::serde::de::value::SeqDeserializer::new(self.children.by_ref().filter(|child| child.is_element()).map(|child| {
-			//println!("item {:?}", child.tag_name().name());
-			// /*Item*/ContentDeserializer(&mut NodeDeserializer::new(child)) // Item flatten => tag enum
-			ElementDeserializer::new(child)
-		})))?
-	}
-
-	#[throws] fn deserialize_map<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		self.deserialize_struct("", &[], visitor)?
-	}
-
-	#[throws] fn deserialize_struct<V: Visitor<'de>>(self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
+	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, fields: &'static [&'static str], visitor: V) -> V::Value {
 		//println!("struct '{}' {:?} '{}'", name, fields, self.name);
 		let cell = std::cell::RefCell::new(self);
 		let mut index = 0;
@@ -180,16 +132,69 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 								//println!("skip whitespace {:?}", child);
 								node.children.next();
 							} else {
-								println!("Unknown {:?}", child);
 								break None;
-								// todo: panic if not in content context
-								//use itertools::Itertools; assert!(, "Ignored {:?} {:?}", child, fields_iter.format(" ")); // Helps complete format
 							}
 						}
 					} else { break None; }
 				}
 			}
 		})))?
+	}
+
+
+	#[throws] fn simple_content(&mut self) -> &'de str {
+		let text = self.children.next().ok_or_else(|| anyhow::Error::msg("Expected simple content"))?;
+		ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected simple content");
+		text.text().unwrap()
+    }
+}
+
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for TextDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for &mut ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for ContentDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for SeqDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+
+enum Value<'t, 'de> { Text(TextDeserializer<'de>), Element(ElementDeserializer<'de>), Content(ContentDeserializer<'t, 'de>), Seq(SeqDeserializer<'t, 'de>) }
+delegatable_trait!{Value}
+impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for Value<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+
+impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
+	type Error = Error;
+	#[throws] fn deserialize_unit<V:Visitor<'de>>(self, visitor: V) -> V::Value {
+		assert!(self.attributes.next().is_none() && self.children.next().is_none());
+		visitor.visit_unit::<Error>()?
+	}
+	#[throws] fn deserialize_str<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_str(visitor)? }
+	#[throws] fn deserialize_string<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_string(visitor)? }
+	#[throws] fn deserialize_u8<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_u8(visitor)? }
+	#[throws] fn deserialize_u16<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_u16(visitor)? }
+	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_u32(visitor)? }
+	#[throws] fn deserialize_i8<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_i8(visitor)? }
+	#[throws] fn deserialize_i16<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_i16(visitor)? }
+	#[throws] fn deserialize_i32<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_i32(visitor)? }
+	#[throws] fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_f32(visitor)? }
+	#[throws] fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_bool(visitor)? }
+
+	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
+
+	#[throws] fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> V::Value {
+		//println!("seq {:?}", self.name);
+		visitor.visit_seq(::serde::de::value::SeqDeserializer::new(self.children.by_ref().filter(|child| child.is_element()).map(|child| {
+			//println!("item {:?}", child.tag_name().name());
+			// /*Item*/ContentDeserializer(&mut NodeDeserializer::new(child)) // Item flatten => tag enum
+			ElementDeserializer::new(child)
+		})))?
+	}
+
+	#[allow(unreachable_code)] #[throws] fn deserialize_map<V: Visitor<'de>>(self, _visitor: V) -> V::Value {
+		todo!() //self.deserialize_struct("", &[], visitor)?
+	}
+
+	#[throws] fn deserialize_struct<V: Visitor<'de>>(self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
+		let value = self.deserialize_struct(fields, visitor)?;
+		use itertools::Itertools; assert!(self.children.peek().is_none(), "Remaining {:?} in {:?}", self.children.clone().format(" "), self);
+		value
 	}
 
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {

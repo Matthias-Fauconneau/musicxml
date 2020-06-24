@@ -20,9 +20,8 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 		self.deserialize_struct("", &[], visitor)?
 	}
 
-	#[throws] fn deserialize_struct<V: Visitor<'de>>(mut self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		//println!("struct [content] '{}' {:?}", name, fields);
-		self.0.deserialize_struct(name, fields, visitor)?
+	#[throws] fn deserialize_struct<V: Visitor<'de>>(mut self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
+		self.0.deserialize_struct(fields, visitor)?
 	}
 
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(mut self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
