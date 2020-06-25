@@ -5,6 +5,7 @@ macro_rules! dispatch {
 			Self::Element(x) => x.$method($($arg),*),
 			Self::Content(x) => x.$method($($arg),*),
 			Self::Seq(x) => x.$method($($arg),*),
+			Self::EmptySeq(x) => x.$method($($arg),*),
 		}
 	)
 }

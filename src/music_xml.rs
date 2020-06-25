@@ -250,6 +250,7 @@ type Staff = /*1-*/u8;
 #[derive(Debug, Deserialize)]#[serde(rename="sound",rename_all="kebab-case")]
 pub struct Sound {
 	dynamics: Option<uf32>,
+	tempo: Option<uf32>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="direction",rename_all="kebab-case")]
@@ -275,7 +276,8 @@ pub enum NoteTypeValue {
 
 #[derive(Debug, Deserialize)]#[serde(rename="note-type",rename_all="kebab-case")]
 pub struct NoteType {
-	value: Option<NoteTypeValue>,
+	#[serde(rename="$")]
+	value: NoteTypeValue,
 	//size: SymbolSize,
 }
 
@@ -292,7 +294,7 @@ pub enum StemValue {
 
 #[derive(Debug, Deserialize)]#[serde(rename="stem",rename_all="kebab-case")]
 pub struct Stem {
-	#[serde(rename="")]
+	#[serde(rename="$")]
 	r#value: StemValue,
 	//y-position
 	//color
@@ -319,6 +321,59 @@ pub enum NoteData {
 	//Unpitched(Unpitched),
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="beam",rename_all=/*space lowercase*/"kebab-case")]
+enum BeamValue { Begin, Continue, End, #[serde(rename="forward hook")] ForwardHook, #[serde(rename="backward hook")] BackwardHook }
+
+#[derive(Debug, Deserialize)]#[serde(rename="beam",rename_all="kebab-case")]
+pub struct Beam {
+	#[serde(rename="$")]
+	value: BeamValue,
+	number: /*BeamLevel=1*/Option<u8>,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum TiedType { Start, Stop, Continue, LetRing }
+
+#[derive(Debug, Deserialize)]#[serde(rename="tied",rename_all="kebab-case")]
+pub struct Tied {
+	r#type: TiedType,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum ArticulationData { Accent, StrongAccent, Staccato, Tenuto, DetachedLegato, Staccatissimo, Spiccato, Scoop, Plop, Doit, Falloff,
+	BreathMark, Caesura, Stress, Unstress, SoftAccent }
+
+#[derive(Debug, Deserialize)]#[serde(rename="articulations",rename_all="kebab-case")]
+pub struct Articulations {
+	#[serde(rename="")]
+	content: Vec<ArticulationData>,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum Notation {
+	Tied(Tied),
+	Articulations(Articulations),
+		/*slur
+		tuplet
+		glissando
+		slide
+		ornaments
+		technical
+		dynamics
+		fermata
+		arpeggiate
+		non-arpeggiate
+		accidental-mark
+		other-notation*/
+
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="notations",rename_all="kebab-case")]
+pub struct Notations {
+	#[serde(rename="")]
+	content: Notation
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="note",rename_all="kebab-case")]
 pub struct Note {
 	#[serde(rename="0")]
@@ -329,6 +384,10 @@ pub struct Note {
 	r#type: Option<NoteType>,
 	#[serde(rename="tie{0,2}")]
 	ties: Vec<Tie>,
+	#[serde(rename="beam{0,8}")]
+	beams: Vec<Beam>,
+	#[serde(rename="notations*")]
+	notations: Vec<Notations>,
 	staff: Option<Staff>,
 	stem: Option<Stem>,
 	#[serde(rename="1")]
@@ -337,6 +396,7 @@ pub struct Note {
 
 #[derive(Debug, Deserialize)]#[serde(rename="backup",rename_all="kebab-case")]
 pub struct Backup {
+
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="ending",rename_all="kebab-case")]
