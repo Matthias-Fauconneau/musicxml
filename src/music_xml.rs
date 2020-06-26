@@ -81,13 +81,19 @@ pub struct Defaults {
 	//lyric_language: Vec<lyric-language>
 }
 
-#[derive(Debug, Deserialize)]#[serde(rename="print-style",rename_all="kebab-case")]
-pub struct PrintStyle {
+#[derive(Debug, Deserialize)]#[serde(rename="position",rename_all="kebab-case")]
+pub struct Position {
 	default_x: Option<f32>,
 	default_y: Option<f32>,
 	relative_x: Option<f32>,
 	relative_y: Option<f32>,
-	//#[serde(rename="?")] font: Font,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="print-style",rename_all="kebab-case")]
+pub struct PrintStyle {
+	#[serde(rename="?")] position: Position,
+	//#[serde(rename="1?")] font: Font,
+	//#[serde(rename="2?")] color: Color,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="print-style-align",rename_all="kebab-case")]
@@ -231,6 +237,8 @@ enum WedgeType { Crescendo, Diminuendo, Stop, Continue }
 #[derive(Debug, Deserialize)]#[serde(rename="wedge",rename_all="kebab-case")]
 pub struct Wedge {
 	r#type: WedgeType,
+	number: Option<u8>,
+	#[serde(rename="?")] position: Option<Position>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
@@ -259,7 +267,7 @@ pub struct Sound {
 #[derive(Debug, Deserialize)]#[serde(rename="direction",rename_all="kebab-case")]
 pub struct Direction {
 	staff: Option<Staff>,
-	sound: Sound,
+	sound: Option<Sound>,
 	placement: /*above*/String,
 	#[serde(rename="direction-type+")]
 	direction_type: Vec<DirectionType>,
@@ -373,8 +381,8 @@ pub enum Notation {
 
 #[derive(Debug, Deserialize)]#[serde(rename="notations",rename_all="kebab-case")]
 pub struct Notations {
-	#[serde(rename="")]
-	content: Notation
+	#[serde(rename="*")]
+	content: Vec<Notation>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]

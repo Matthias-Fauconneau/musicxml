@@ -6,6 +6,8 @@ pub(super) struct ContentDeserializer<'t, 'de>(pub std::cell::RefMut<'t, &'t mut
 impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	type Error = Error;
 
+	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
+
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
 		println!("seq [content]");
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::new(self.0.children.by_ref().filter(roxmltree::Node::is_element).map(|e| {
@@ -36,5 +38,5 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 		self.deserialize_map(visitor)?
 	}
 	serde::forward_to_deserialize_any!{
-		char bytes byte_buf str string identifier bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 f32 f64 option unit unit_struct newtype_struct tuple tuple_struct ignored_any}
+		char bytes byte_buf str string identifier bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 f32 f64 unit unit_struct newtype_struct tuple tuple_struct ignored_any}
 }
