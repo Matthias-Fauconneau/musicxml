@@ -28,10 +28,18 @@ impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolEr
 macro_rules! bail { ($($arg:tt)*) => { throw!(<Error as ::serde::de::Error>::custom(format!($($arg)*))) } }
 macro_rules! ensure { ($cond:expr, $($arg:tt)*) => { if !$cond { bail!($($arg)*) } } }
 
-mod content; use content::ContentDeserializer;
-mod seq; use seq::{SeqDeserializer, EmptySeqDeserializer};
-
 use {fehler::*, ::serde::de::{self, Visitor, Deserializer}};
+
+pub(super) struct DefaultDeserializer;
+
+impl<'de> de::Deserializer<'de> for DefaultDeserializer {
+	type Error = Error;
+	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
+		visitor.visit_map(::serde::de::value::MapDeserializer::<_,Error>::new(std::iter::empty::<(&str,DefaultDeserializer)>()))?
+	}
+	::serde::forward_to_deserialize_any!{
+		char bytes byte_buf str string identifier bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 f32 f64 option unit seq map unit_struct newtype_struct tuple tuple_struct struct enum ignored_any}
+}
 
 ///
 
@@ -77,22 +85,8 @@ pub struct ElementDeserializer<'de> {
 	children: std::iter::Peekable<roxmltree::Children<'de, 'de>>,
 }
 
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for TextDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for &mut ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for ContentDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for SeqDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-impl<'de> ::serde::de::IntoDeserializer<'de, Error> for EmptySeqDeserializer { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
-
-enum Value<'t, 'de> {
-	Text(TextDeserializer<'de>),
-	Element(ElementDeserializer<'de>),
-	Content(ContentDeserializer<'t, 'de>),
-	Seq(SeqDeserializer<'t, 'de>),
-	EmptySeq(EmptySeqDeserializer),
-}
-delegatable_trait!{Value}
-impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for Value<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+mod seq; use seq::{EmptySeqDeserializer, SeqDeserializer};
+mod content; use content::ContentDeserializer;
 
 impl std::fmt::Debug for ElementDeserializer<'_> {
     #[throws(std::fmt::Error)] fn fmt(&self, f: &mut std::fmt::Formatter) {
@@ -101,6 +95,25 @@ impl std::fmt::Debug for ElementDeserializer<'_> {
     }
 }
 
+enum Value<'t, 'de> {
+	Text(TextDeserializer<'de>),
+	Element(ElementDeserializer<'de>),
+	Content(ContentDeserializer<'t, 'de>),
+	Seq(SeqDeserializer<'t, 'de>),
+	EmptySeq(EmptySeqDeserializer),
+	Default(DefaultDeserializer),
+}
+delegatable_trait!{Value}
+
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for TextDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for &mut ElementDeserializer<'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for ContentDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for SeqDeserializer<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for EmptySeqDeserializer { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'de> ::serde::de::IntoDeserializer<'de, Error> for DefaultDeserializer { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for Value<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
+
 impl<'de> ElementDeserializer<'de> {
     fn new(node: roxmltree::Node<'de, 'de>) -> Self {
 		assert!(node.is_element() || node.is_root(), "{:?}", node);
@@ -108,24 +121,26 @@ impl<'de> ElementDeserializer<'de> {
 	}
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		println!("struct '{}' {:?} '{}'", name, fields, self.name);
+		println!("deserialize struct '{}' {:?} '{:?}'", name, fields, self);
 		let cell = std::cell::RefCell::new(self);
-		let mut index = 0;
-		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "$*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
+		//let mut index = 0;
+		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
-			println!("struct '{}' {:?} '{}' {}", name, fields, node.name, index);
+			println!("map iter '{}' {:?} {:?}", name, fields, node);
 			if let Some(a) = node.attributes.peek() {
-				println!("attribute {}", a.name());
-				if fields.iter().any(|(_,(x,_))| x == &a.name()) {
+				if let Some((field,_)) = fields.take_first(|(_,(name,_))| name == &a.name()) {
 					let a = node.attributes.next().unwrap();
-					Some((a.name(), Value::Text(TextDeserializer(a.value()))))
-				} else if let Some((field,_)) = fields.iter().find(|(field,_)| field.is_empty() || field.parse() == Ok(index) ) {
+					println!("attribute {:?}={}", field, a.value());
+					Some((field, Value::Text(TextDeserializer(a.value()))))
+				} //else if let Some((field,_)) = fields.iter().find(|(field,_)| field.is_empty() || field.parse() == Ok(index) || field==&"?" ) {
+				else if let Some((field,_)) = fields.take_first(|(field,(_,def))| field.is_empty() /*|| field.parse() == Ok(index)*/ || def==&"?" ) {
 					println!("no field '{}' in {:?}, deserializing attribute to '{}'", a.name(), fields, field);
-					index += 1;
+					//index += 1;
 					//("", Value::Text(TextDeserializer(a.value()))) // Flatten
 					Some((field, Value::Content(ContentDeserializer(node)))) // Flatten
 				} else {
+					println!("skip attributes {}", a.name());
 					None
 				}
 			} else {
@@ -146,28 +161,42 @@ impl<'de> ElementDeserializer<'de> {
 									}
 								}
 							}
-						}/*else*/ if child.is_element() /*&&*/{ if let Some((field,_)) = fields.take_first(|(_,(id,_))| id.is_empty() || id.parse()==Ok(index)) {
+						}/*else*/ if child.is_element() /*&&*/{ if let Some((field,_)) = fields.take_first(|(_,(id,_))| id.is_empty() /*|| id.parse()==Ok(index)*/) {
 							println!("no field '{}' in {:?}, deserializing child to '{}'.'{}'", name, fields, node.name, field);
-							index += 1;
+							//index += 1;
 							break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
-						} } /*else*/ if child.is_text() /*/*&&*/{ if let Some((field,_)) = fields_iter.clone().find(|(_,(_,def))| def==&"$")*/ {
-							//writeln!(trace, "deserializing text child to $").ok()?;
+						} } /*else*/ if child.is_text() { if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"$") {
+							println!("deserializing text child to {}", field);
 							//break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
-							if !child.text().unwrap().trim().is_empty() { println!("deserializing text {:?} to {}", child, "$"); }
-							break Some(("$", Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
-						} /*else*/ {
-							if child.is_text() && child.text().unwrap().trim().is_empty() {
-								println!("skip whitespace {:?}", child);
+							//if !child.text().unwrap().trim().is_empty() { println!("deserializing text {:?} to {}", child, field); }
+							break Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
+						} } /*else*/ {
+							// FIXME: only if no other (parent) deserializer might parse a simple content text
+							if child.is_text() && child.text().unwrap().trim().is_empty() && !fields.iter().all(|(_,(_,def))| def==&"@") {
+								println!("skip whitespace {:?} {:?}", child, fields);
 								node.children.next();
+							} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
+								println!("default empty seq {} before continue content {:?}", field, child);
+								break Some((field, Value::EmptySeq(EmptySeqDeserializer)));
+							} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
+								println!("default value {}", field);
+								break Some((field, Value::Default(DefaultDeserializer)));
 							} else {
+								println!("fields {:?} content {:?}", fields, child);
 								break None; // Continue content
 							}
 						}
 					} else {
 						if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
+							println!("empty seq {}", field);
 							break Some((field, Value::EmptySeq(EmptySeqDeserializer)));
+						} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
+							println!("default value {}", field);
+							break Some((field, Value::Default(DefaultDeserializer)));
+						} else {
+							println!("done {} {:?}", name, node);
+							break None;
 						}
-						break None;
 					}
 				}
 			}
@@ -215,6 +244,7 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
 		let value = self.deserialize_struct(name, fields, visitor)?;
+		while self.children.peek().filter(|child| child.is_text() && child.text().unwrap().trim().is_empty()).is_some() { self.children.next(); }
 		use itertools::Itertools; assert!(self.attributes.peek().is_none() && self.children.peek().is_none(), "Remaining {:?} in {:?}", self.children.clone().format(" "), self);
 		value
 	}

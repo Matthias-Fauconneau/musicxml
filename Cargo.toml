@@ -10,3 +10,4 @@ anyhow = ''
 serde = { version = '', features = ['derive'] }
 roxmltree = ''
 itertools = ''
+druid = { path='../druid/druid' }

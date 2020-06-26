@@ -1,11 +1,12 @@
 macro_rules! dispatch {
 	($self:ident, $method:ident($($arg:ident),*) ) => (
 		match $self {
+			Self::Default(x) => x.$method($($arg),*),
+			Self::EmptySeq(x) => x.$method($($arg),*),
 			Self::Text(x) => x.$method($($arg),*),
 			Self::Element(x) => x.$method($($arg),*),
 			Self::Content(x) => x.$method($($arg),*),
 			Self::Seq(x) => x.$method($($arg),*),
-			Self::EmptySeq(x) => x.$method($($arg),*),
 		}
 	)
 }

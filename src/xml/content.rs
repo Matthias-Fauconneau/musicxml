@@ -5,8 +5,6 @@ pub(super) struct ContentDeserializer<'t, 'de>(pub std::cell::RefMut<'t, &'t mut
 
 impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	type Error = Error;
-	//#[throws] fn deserialize_str<V: Visitor<'de>>(mut self, visitor: V) -> V::Value { visitor.visit_str::<Error>(self.0.text()?)? }
-	//#[throws] fn deserialize_string<V: Visitor<'de>>(mut self, visitor: V) -> V::Value { visitor.visit_string::<Error>(self.0.text()?.to_owned())? }
 
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
 		println!("seq [content]");

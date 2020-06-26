@@ -61,10 +61,13 @@ pub struct PageLayout {
 
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
 pub struct Font {
+	#[serde(rename="font-family@")]
 	font_family: Option<String>,
 	//font_style: Option<String>,
+	#[serde(rename="font-size@")]
 	font_size: Option<u8>,
-	//font_weight: Option</*normal,bold*/String>,
+	#[serde(rename="font-weight@")]
+	font_weight: Option</*normal,bold*/String>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="defaults",rename_all="kebab-case")]
@@ -84,24 +87,23 @@ pub struct PrintStyle {
 	default_y: Option<f32>,
 	relative_x: Option<f32>,
 	relative_y: Option<f32>,
+	//#[serde(rename="?")] font: Font,
 }
 
-/*#[derive(Debug, Deserialize)]#[serde(rename="print-style-align",rename_all="kebab-case")]
+#[derive(Debug, Deserialize)]#[serde(rename="print-style-align",rename_all="kebab-case")]
 pub struct PrintStyleAlign {
-	#[serde(rename="")]
+	#[serde(rename="?")]
 	print_style: PrintStyle,
-	valign: /*top,middle,bottom,baseline*/String,
-}*/
+	//valign: /*top,middle,bottom,baseline*/Option<String>,
+}
 
 #[derive(Debug, Deserialize)]#[serde(rename="formatted-text",rename_all="kebab-case")]
 pub struct FormattedText {
-	//print_style_align: PrintStyleAlign,
-	#[serde(rename="")]
-	print_style: PrintStyle,
-	valign: /*top,middle,bottom,baseline*/Option<String>,
 	justify: /*left,center,right*/Option<String>,
-	font_size: u8,
-	font_weight: Option</*normal,bold*/String>,
+	#[serde(rename="?")]
+	print_style_align: PrintStyleAlign,
+		#[serde(rename="0?")] font: Font,
+		valign: /*top,middle,bottom,baseline*/Option<String>,
 	#[serde(rename="$")]
 	content: String,
 }
@@ -158,6 +160,7 @@ pub struct SystemMargins {
 #[derive(Debug, Deserialize)]#[serde(rename="system-layout",rename_all="kebab-case")]
 pub struct SystemLayout {
 	system_margins: SystemMargins,
+	system_distance: Option<f32>,
 	top_system_distance: Option<f32>,
 }
 
@@ -208,7 +211,7 @@ pub struct Attributes {
 #[derive(Debug, Deserialize)]#[serde(rename="metronome",rename_all="kebab-case")]
 pub struct Metronome {
 	parentheses: bool,
-	#[serde(rename="")] print_style: PrintStyle,
+	#[serde(rename="?")] print_style: PrintStyle,
 	beat_unit: /*quarter*/String,
 	per_minute: u16,
 }
@@ -218,8 +221,8 @@ pub enum DynamicText { pppppp,ppppp,pppp,ppp,pp,p,mp,mf,f,ff,fff,ffff,fffff,ffff
 
 #[derive(Debug, Deserialize)]#[serde(rename="dynamics",rename_all="kebab-case")]
 pub struct Dynamics {
-	#[serde(rename="0")] print_style: PrintStyle,
-	#[serde(rename="1")] text: DynamicText,
+	#[serde(rename="?")] print_style: PrintStyle,
+	#[serde(rename="")] text: DynamicText,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="type",rename_all="kebab-case")]
@@ -374,14 +377,23 @@ pub struct Notations {
 	content: Notation
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub struct EmptyPlacement {
+	#[serde(rename="?"/*0*/)]
+	print_style: PrintStyle,
+	//placement
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="note",rename_all="kebab-case")]
 pub struct Note {
-	#[serde(rename="0")]
+	#[serde(rename="?")]
 	print_style: PrintStyle,
 	duration: u32,
 	chord: Option<()>,
 	voice: Option<u8>,
 	r#type: Option<NoteType>,
+	#[serde(rename="dot*")]
+	dot: Vec<EmptyPlacement>,
 	#[serde(rename="tie{0,2}")]
 	ties: Vec<Tie>,
 	#[serde(rename="beam{0,8}")]
@@ -390,25 +402,31 @@ pub struct Note {
 	notations: Vec<Notations>,
 	staff: Option<Staff>,
 	stem: Option<Stem>,
-	#[serde(rename="1")]
+	#[serde(rename="")]
 	content: NoteData,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="backup",rename_all="kebab-case")]
 pub struct Backup {
-
+	duration: u32,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="ending",rename_all="kebab-case")]
 pub struct Ending {
 	number: u8,
 	r#type: /*start,stop,discontinue*/String,
-	#[serde(rename="")]
+	#[serde(rename="?")]
 	print_style: PrintStyle,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="repeat",rename_all="kebab-case")]
+pub struct Repeat {
+	direction: /*backward,forward*/String,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="barline",rename_all="kebab-case")]
 pub struct Barline {
+	repeat: Option<Repeat>,
 	location: /*right,left,middle*/String,
 	bar_style: /*enum*/Option<String>,
 	ending: Option<Ending>,
