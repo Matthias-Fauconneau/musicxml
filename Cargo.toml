@@ -1,13 +1,14 @@
 [package]
-name = 'musicxml'
+name = 'music'
 version = '0.0.0'
 authors = ['Matthias Fauconneau <matthias.fauconneau@gmail.com>']
 edition = '2018'
 
 [dependencies]
-fehler = ''
 anyhow = ''
-serde = { version = '', features = ['derive'] }
+fehler = ''
+#serde = { version = '', features = ['derive'] }
 roxmltree = ''
 itertools = ''
-druid = { path='../druid/druid' }
+framework = { path = "framework", features = ["anyhow","fehler","window"] }
+#framework = { git = "https://github.com/Matthias-Fauconneau/framework", features = ["window"] }

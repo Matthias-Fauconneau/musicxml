@@ -1,30 +1,22 @@
-mod xml;
-mod music_xml; use music_xml::MusicXML;
-use druid::{kurbo::Line, piet::{Color, FontBuilder, Text}, widget::prelude::*, WindowDesc, AppLauncher};
+//mod xml;
+//mod music_xml; use music_xml::MusicXML;
+struct MusicXML;
+use framework::*;
 
-impl Widget<()> for MusicXML{
-    fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, _data: &mut (), _env: &Env) {}
-    fn lifecycle(&mut self, _ctx: &mut LifeCycleCtx, _event: &LifeCycle, _data: &(), _env: &Env) {}
-    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &(), _data: &(), _env: &Env) {}
-    fn layout(&mut self, _layout_ctx: &mut LayoutCtx, bc: &BoxConstraints, _data: &(), _env: &Env) -> Size { bc.max() }
-    fn paint(&mut self, ctx: &mut PaintCtx, _data: &(), _env: &Env) {
-        let (bg, fg) = (Color::BLACK, Color::WHITE);
-        ctx.clear(bg); // full window (otherwise fill(Rect::from_origin_size(Point::ORIGIN, ctx.size()); ctx.fill(rect, bg)))
-        let staff_height = 360.;
-        let margin = staff_height / 2.; // 180
+impl Widget for MusicXML{
+    fn paint(&mut self, target : &mut Target) {
+		let fg = bgra8{b:0xFF,g:0xFF,r:0xFF,a:0xFF};
+
+		let staff_height = 360;
+        let margin = staff_height / 2; // 180
         //let interval_height = staff_height / 4.; // 90
 
-        let size = ctx.size();
-        ctx.stroke(Line::new((0.,margin),(size.width,margin)), &fg, 1.);
-        let _font = ctx.text().new_font_by_name("Bravura", staff_height).build().unwrap();
-        //let layout = ctx.text().new_text_layout(&font, , std::f64::INFINITY).build().unwrap();
-		//ctx.draw_text(&layout, (80.0, 40.0), fg);
-    }
+        target.slice_mut(xy{x:0, y:margin}, xy{x: target.size.x, y: 1}).set(|_| fg);
+	}
 }
 
-#[fehler::throws(anyhow::Error)] fn main() {
-	let score : MusicXML = xml::from_document(&xml::parse(&std::fs::read("../test.xml")?)?)?;
-	AppLauncher::with_window(WindowDesc::new(|| score))
-        .use_simple_logger()
-        .launch(())?
+#[throws] fn main() {
+	//let mut score : MusicXML = xml::from_document(&xml::parse(&std::fs::read("../test.xml")?)?)?;
+	let mut score = MusicXML;
+	window::run(&mut score)?
 }
