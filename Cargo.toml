@@ -7,8 +7,10 @@ edition = '2018'
 [dependencies]
 anyhow = ''
 fehler = ''
-#serde = { version = '', features = ['derive'] }
+serde = ''
+serde_derive = '' # 2s
+#serde-derive = { package='wa-serde-derive', version='' } # 20s :/
 roxmltree = ''
 itertools = ''
-framework = { path = "framework", features = ["anyhow","fehler","window"] }
-#framework = { git = "https://github.com/Matthias-Fauconneau/framework", features = ["window"] }
+#framework = { path = "framework", features = ["anyhow","fehler","window"] }
+framework = { git = "https://github.com/Matthias-Fauconneau/framework", features = ["anyhow","fehler","window"] }

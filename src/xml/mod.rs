@@ -124,26 +124,26 @@ impl<'de> ElementDeserializer<'de> {
 		Self{name: node.tag_name().name(), attributes: node.attributes().iter().peekable(), children: node.children().peekable()}
 	}
 
-	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		println!("deserialize struct '{}' {:?} '{:?}'", name, fields, self);
+	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
+		//println!("deserialize struct '{}' {:?} '{:?}'", name, fields, self);
 		let cell = std::cell::RefCell::new(self);
 		//let mut index = 0;
 		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
-			println!("map iter '{}' {:?} {:?}", name, fields, node);
+			//println!("map iter '{}' {:?} {:?}", name, fields, node);
 			if let Some(a) = node.attributes.peek() {
 				if let Some((field,_)) = fields.take_first(|(_,(name,_))| name == &a.name()) {
 					let a = node.attributes.next().unwrap();
-					println!("attribute {:?}={}", field, a.value());
+					//println!("attribute {:?}={}", field, a.value());
 					Some((field, Value::Text(TextDeserializer(a.value()))))
 				} //else if let Some((field,_)) = fields.iter().find(|(field,_)| field.is_empty() || field.parse() == Ok(index) || field==&"?" ) {
 				else if let Some(index) = fields.iter().position(|(field,(_,def))| field.is_empty() /*|| field.parse() == Ok(index)*/ || def==&"?" ) {
 					let (field,(_,_def)) = fields[index];
-					println!("no field '{}' in {:?}, deserializing attribute to '{}'", a.name(), fields, field);
+					//println!("no field '{}' in {:?}, deserializing attribute to '{}'", a.name(), fields, field);
 					/*if !(def.starts_with("+") || def.starts_with("*") || def.starts_with("{"))*/ {
 						fields.remove(index);
-						println!("remove field with single occurence from possible choices {:?}", field);
+						//println!("remove field with single occurence from possible choices {:?}", field);
 					} /*else {
 						println!("keep field with multiple occurence in possible choices {:?}", field);
 					}*/
@@ -151,7 +151,7 @@ impl<'de> ElementDeserializer<'de> {
 					//("", Value::Text(TextDeserializer(a.value()))) // Flatten
 					Some((field, Value::Content(ContentDeserializer(node)))) // Flatten
 				} else {
-					println!("skip attributes {}", a.name());
+					//println!("skip attributes {}", a.name());
 					None
 				}
 			} else {
@@ -161,10 +161,10 @@ impl<'de> ElementDeserializer<'de> {
 						if !name.is_empty() /*&&*/{
 							if let Some((field,(tag,def))) = fields.take_first(|(_,(id,_))| id == &name) {
 								if !def.is_empty() {
-									println!("external sequence '{}' {:?}", field, child);
+									//println!("external sequence '{}' {:?}", field, child);
 									break Some((field, Value::Seq(SeqDeserializer{node, tag}))); // External sequence
 								} else {
-									println!("field '{}' {:?}", field, child);
+									//println!("field '{}' {:?}", field, child);
 									use roxmltree::NodeType::*; match child.node_type() {
 										Text => break Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))),
 										Element => break Some((field, Value::Element(ElementDeserializer::new(node.children.next().unwrap())))),
@@ -174,10 +174,10 @@ impl<'de> ElementDeserializer<'de> {
 							}
 						}/*else*/ if child.is_element() /*&&*/{ if let Some(index) = fields.iter().position(|(_,(id,_))| id.is_empty() /*|| id.parse()==Ok(index)*/) {
 							let (field,(_,_def)) = fields[index];
-							println!("no field '{}' in {:?}, deserializing child to '{}'.'{}'", name, fields, node.name, field);
+							//println!("no field '{}' in {:?}, deserializing child to '{}'.'{}'", name, fields, node.name, field);
 							/*if !(def.starts_with("+") || def.starts_with("*") || def.starts_with("{"))*/ {
 								fields.remove(index);
-								println!("remove field with single occurence from possible choices {:?}", field);
+								//println!("remove field with single occurence from possible choices {:?}", field);
 							} /*else {
 								println!("keep field with multiple occurence in possible choices {:?}", field);
 							}*/
@@ -185,36 +185,36 @@ impl<'de> ElementDeserializer<'de> {
 							//index += 1;
 							break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
 						} } /*else*/ if child.is_text() { if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"$") {
-							println!("deserializing text child to {}", field);
+							//println!("deserializing text child to {}", field);
 							//break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
 							//if !child.text().unwrap().trim().is_empty() { println!("deserializing text {:?} to {}", child, field); }
 							break Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
 						} } /*else*/ {
 							// FIXME: only if no other (parent) deserializer might parse a simple content text
-							println!("fields {:?} {:?}", fields, child);
+							//println!("fields {:?} {:?}", fields, child);
 							if child.is_text() && child.text().unwrap().trim().is_empty() && (/*fields.is_empty() ||*/ fields.iter().any(|(_,(_,def))| def!=&"@")) {
-								println!("skip whitespace {:?} {:?}", child, fields);
+								//println!("skip whitespace {:?} {:?}", child, fields);
 								node.children.next();
 							} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
-								println!("default empty seq {} before continue content {:?}", field, child);
+								//println!("default empty seq {} before continue content {:?}", field, child);
 								break Some((field, Value::EmptySeq(EmptySeqDeserializer)));
 							} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
-								println!("default value 1 {}", field);
+								//println!("default value 1 {}", field);
 								break Some((field, Value::Default(DefaultDeserializer)));
 							} else {
-								println!("break None; // Continue content");
+								//println!("break None; // Continue content");
 								break None; // Continue content
 							}
 						}
 					} else {
 						if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
-							println!("empty seq {}", field);
+							//println!("empty seq {}", field);
 							break Some((field, Value::EmptySeq(EmptySeqDeserializer)));
 						} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
-							println!("default value 2 {}", field);
+							//println!("default value 2 {}", field);
 							break Some((field, Value::Default(DefaultDeserializer)));
 						} else {
-							println!("done {} {:?}", name, node);
+							//println!("done {} {:?}", name, node);
 							break None;
 						}
 					}

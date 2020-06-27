@@ -1,5 +1,5 @@
 /// MusicXML
-use serde::Deserialize;
+use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]#[serde(rename="work",rename_all="kebab-case")]
 pub struct Work {
@@ -9,7 +9,8 @@ pub struct Work {
 #[derive(Debug, Deserialize)]#[serde(rename="supports",rename_all="kebab-case")]
 pub struct Supports {
 	element: String,
-	r#type: bool,
+	//r#type: bool, // watt: "r#type" is not a valid Ident
+	#[serde(rename="type")] r_type: bool,
 	attribute: Option<String>,
 	value: Option<String>,
 }
@@ -44,7 +45,8 @@ pub struct Scaling {
 
 #[derive(Debug, Deserialize)]#[serde(rename="page-margins",rename_all="kebab-case")]
 pub struct PageMargins {
-	r#type: /*odd,even,both*/String,
+	//r#type: /*odd,even,both*/String,
+	#[serde(rename="type")] r_type: /*odd,even,both*/String,
 	left_margin: f32,
 	right_margin: f32,
 	top_margin: f32,
@@ -211,7 +213,7 @@ pub struct Attributes {
 	time: Option<Time>,
 	staves: Option<u8>,
 	#[serde(rename="clef*")]
-	clefs: Vec<Clef>,
+	pub clefs: Vec<Clef>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="metronome",rename_all="kebab-case")]
@@ -236,7 +238,8 @@ enum WedgeType { Crescendo, Diminuendo, Stop, Continue }
 
 #[derive(Debug, Deserialize)]#[serde(rename="wedge",rename_all="kebab-case")]
 pub struct Wedge {
-	r#type: WedgeType,
+	//r#type: WedgeType,
+	#[serde(rename="type")] r_type: WedgeType,
 	number: Option<u8>,
 	#[serde(rename="?")] position: Option<Position>,
 }
@@ -294,7 +297,8 @@ pub struct NoteType {
 
 #[derive(Debug, Deserialize)]#[serde(rename="tie",rename_all="kebab-case")]
 pub struct Tie {
-	r#type: /*start,stop*/String,
+	//r#type: /*start,stop*/String,
+	#[serde(rename="type")] r_type: /*start,stop*/String,
 	//time-only: Option
 }
 
@@ -347,7 +351,8 @@ pub enum TiedType { Start, Stop, Continue, LetRing }
 
 #[derive(Debug, Deserialize)]#[serde(rename="tied",rename_all="kebab-case")]
 pub struct Tied {
-	r#type: TiedType,
+	//r#type: TiedType,
+	#[serde(rename="type")] r_type: TiedType,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
@@ -399,7 +404,8 @@ pub struct Note {
 	duration: u32,
 	chord: Option<()>,
 	voice: Option<u8>,
-	r#type: Option<NoteType>,
+	//r#type: Option<NoteType>,
+	#[serde(rename="type")] r_type: Option<NoteType>,
 	#[serde(rename="dot*")]
 	dot: Vec<EmptyPlacement>,
 	#[serde(rename="tie{0,2}")]
@@ -422,7 +428,8 @@ pub struct Backup {
 #[derive(Debug, Deserialize)]#[serde(rename="ending",rename_all="kebab-case")]
 pub struct Ending {
 	number: u8,
-	r#type: /*start,stop,discontinue*/String,
+	//r#type: /*start,stop,discontinue*/String,
+	#[serde(rename="type")] r_type: /*start,stop,discontinue*/String,
 	#[serde(rename="?")]
 	print_style: PrintStyle,
 }
@@ -455,14 +462,14 @@ pub struct Measure {
 	number: u32,
 	width: f32,
 	#[serde(rename="*")]
-	music_data: Vec<MusicData>,
+	pub music_data: Vec<MusicData>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="part",rename_all="kebab-case")]
 pub struct Part {
 	id: String,
 	#[serde(rename="measure+")]
-	measures: Vec<Measure>
+	pub measures: Vec<Measure>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="score-partwise",rename_all="kebab-case")]
@@ -475,10 +482,10 @@ pub struct ScorePartwise {
 	credits: Vec<Credit>,
 	part_list: PartList,
     #[serde(rename="part+")]
-	parts : Vec<Part>
+	pub parts : Vec<Part>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="",rename_all="kebab-case")]
 pub struct MusicXML {
-    score_partwise: ScorePartwise
+    pub score_partwise: ScorePartwise
 }
