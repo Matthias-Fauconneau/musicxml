@@ -199,10 +199,13 @@ pub struct Time {
 	beat_type: u8,
 }
 
-#[derive(Debug, Deserialize)]#[serde(rename="time",rename_all="kebab-case")]
+#[derive(Debug, Deserialize, PartialEq)]#[serde(rename=/*"clef-sign"*/"sign")]
+pub enum ClefSign { G, F }
+
+#[derive(Debug, Deserialize)]#[serde(rename="clef",rename_all="kebab-case")]
 pub struct Clef {
-	number: /*staff*/u8,
-	sign: /*F,G*/String,
+	pub(crate) number: /*staff*/u8,
+	pub sign: ClefSign,
 	line: /*2-5*/Option<u8>,
 }
 

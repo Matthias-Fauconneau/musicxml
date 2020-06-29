@@ -269,11 +269,12 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 		value
 	}
 
-	#[throws] fn deserialize_enum<V: Visitor<'de>>(self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
-		//println!("enum '{}' {:?} {:?}", name, variants, self.name);
-		if name ==  self.name {
+	#[allow(unreachable_code)] #[throws] fn deserialize_enum<V: Visitor<'de>>(self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
+		if name ==  self.name { // e.g sign: clef-sign
+			//println!("content enum '{}' {:?} {:?}", name, variants, self.name);
 			TextDeserializer(self.simple_content()?).deserialize_enum(name, variants, visitor)?
-		} else {
+		} else { // e.g encoding
+			//println!("tag enum '{}' {:?} {:?}", name, variants, self.name);
 			visitor.visit_enum(::serde::de::value::MapAccessDeserializer::new(::serde::de::value::MapDeserializer::new(std::iter::once((self.name, self)))))?
 		}
     }

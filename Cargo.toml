@@ -17,4 +17,4 @@ itertools = ''
 [dependencies.framework]
 path = 'framework'
 #git = "https://github.com/Matthias-Fauconneau/framework"
-features = ['fehler','anyhow','font-file','sRGB','window']
+features = ['fehler','anyhow','graphic','window','font-file']
