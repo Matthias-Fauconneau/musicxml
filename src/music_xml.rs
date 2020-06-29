@@ -174,7 +174,8 @@ pub struct SystemLayout {
 
 #[derive(Debug, Deserialize)]#[serde(rename="staff-layout",rename_all="kebab-case")]
 pub struct StaffLayout {
-	number: Option<u8>,
+	#[serde(rename="number")]
+	staff: Option<Staff>,
 	staff_distance: Option<f32>,
 }
 
@@ -199,12 +200,13 @@ pub struct Time {
 	beat_type: u8,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]#[serde(rename=/*"clef-sign"*/"sign")]
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]#[serde(rename=/*"clef-sign"*/"sign")]
 pub enum ClefSign { G, F }
 
-#[derive(Debug, Deserialize)]#[serde(rename="clef",rename_all="kebab-case")]
+#[derive(Debug, Deserialize, Clone, Copy)]#[serde(rename="clef",rename_all="kebab-case")]
 pub struct Clef {
-	pub(crate) number: /*staff*/u8,
+	#[serde(rename="number")]
+	pub(crate) staff: Staff,
 	pub sign: ClefSign,
 	line: /*2-5*/Option<u8>,
 }
@@ -261,7 +263,8 @@ pub struct DirectionType {
 	content: DirectionTypeData,
 }
 
-type Staff = /*1-*/u8;
+//type Staff = /*1-*/u8;
+#[derive(Debug, Deserialize, Clone, Copy)]#[serde(transparent)] pub struct Staff(pub /*1-*/u8);
 #[allow(non_camel_case_types)] type uf32 = /*0-*/f32;
 
 #[derive(Debug, Deserialize)]#[serde(rename="sound",rename_all="kebab-case")]
@@ -294,7 +297,7 @@ pub enum NoteTypeValue {
 #[derive(Debug, Deserialize)]#[serde(rename="note-type",rename_all="kebab-case")]
 pub struct NoteType {
 	#[serde(rename="$")]
-	value: NoteTypeValue,
+	pub value: NoteTypeValue,
 	//size: SymbolSize,
 }
 
@@ -319,11 +322,11 @@ pub struct Stem {
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="step")]
-pub enum Step { A,B,C,D,E,F,G }
+pub enum Step { C,D,E,F,G,A,B }
 
 #[derive(Debug, Deserialize)]#[serde(rename="pitch",rename_all="kebab-case")]
 pub struct Pitch {
-	step: Step,
+	pub step: Step,
 	alter: /*-1..1*/Option<f32>,
 	octave: Option</*0-9=4*/u8>,
 }
@@ -407,8 +410,8 @@ pub struct Note {
 	duration: u32,
 	chord: Option<()>,
 	voice: Option<u8>,
-	//r#type: Option<NoteType>,
-	#[serde(rename="type")] r_type: Option<NoteType>,
+	pub r#type: Option<NoteType>,
+	//#[serde(rename="type")] r_type: Option<NoteType>,
 	#[serde(rename="dot*")]
 	dot: Vec<EmptyPlacement>,
 	#[serde(rename="tie{0,2}")]
@@ -417,10 +420,10 @@ pub struct Note {
 	beams: Vec<Beam>,
 	#[serde(rename="notations*")]
 	notations: Vec<Notations>,
-	staff: Option<Staff>,
+	pub staff: Option<Staff>,
 	stem: Option<Stem>,
 	#[serde(rename="")]
-	content: NoteData,
+	pub content: NoteData,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="backup",rename_all="kebab-case")]
