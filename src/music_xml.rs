@@ -435,8 +435,8 @@ pub struct EmptyPlacement {
 pub struct Note {
 	#[serde(rename="?")]
 	print_style: PrintStyle,
-	duration: u32,
-	chord: Option<()>,
+	pub duration: u32,
+	pub chord: Option<()>,
 	voice: Option<u8>,
 	pub r#type: Option<NoteType>,
 	//#[serde(rename="type")] r_type: Option<NoteType>,
@@ -456,7 +456,7 @@ pub struct Note {
 
 #[derive(Debug, Deserialize)]#[serde(rename="backup",rename_all="kebab-case")]
 pub struct Backup {
-	duration: u32,
+	pub duration: u32,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="ending",rename_all="kebab-case")]

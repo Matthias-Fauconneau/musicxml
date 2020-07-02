@@ -4,7 +4,6 @@
 mod xml;
 mod music_xml; use music_xml::MusicXML;
 #[allow(non_snake_case)] mod SMuFL {
-	//#![allow(non_camel_case_types)]
 	pub mod clef {
 		pub const G : char = '\u{E050}';
 		pub const F : char = '\u{E062}';
@@ -59,7 +58,34 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 	let mut score = Score::new(sheet);
 	for part in &music.score_partwise.parts {
 		for measure in &part.measures {
-			for music_data in &measure.music_data {
+			use MusicData::*;
+			let music_data = {
+				let mut buffer = measure.music_data.iter().scan((0,0), |(t, next_t), music_data| {
+					if let Note(music_xml::Note{chord: Some(_), ..}) = music_data {/*Chord inhibits preceding note progress, i.e starts at the preceding note time*/}
+					else { *t = *next_t; } // Normal progress
+					let start = *t;
+					match music_data {
+						Backup(music_xml::Backup{duration}) => { *next_t = *t - duration; },
+						Note(music_xml::Note{duration, ..}) => { *next_t = *t + duration; },
+						_ => {},
+					}
+					Some((start, music_data))
+				}).collect::<Vec<_>>();
+				buffer.sort_by_key(|&(t,_)| t);
+				buffer
+			};
+			let (mut t, mut x) = (0, score.x());
+			for (next_t, music_data) in music_data {
+				if next_t > t { x = score.x(); }
+				t = next_t;
+				impl std::fmt::Display for MusicData { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+					write!(f, "{}", match self {
+						Note(_) => "Note",
+						Backup(_) => "Backup",
+						_ => "_",
+					})
+				}}
+				println!("{} {} {}", t, x, music_data);
 
 				impl From<&music_xml::Staff> for usize { fn from(staff: &music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
 				#[derive(Deref)] struct StaffRef<'t> { index: usize, #[deref] staff: &'t Staff }
@@ -69,7 +95,6 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 				}
 				#[derive(Deref, DerefMut)] struct StaffMut<'t> { index: usize, #[deref]#[deref_mut] staff: &'t mut Staff }
 				trait IndexMut { fn index_mut(&mut self, index: &music_xml::Staff) -> StaffMut; }
-				//impl<N: usize> IndexMut for &mut [Staff; N] {
 				impl IndexMut for [Staff] {
 					fn index_mut(&mut self, index: &music_xml::Staff) -> StaffMut { let index = index.into(); StaffMut{index, staff: &mut self[index]} }
 				}
@@ -104,20 +129,20 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 				}
 
 				use SMuFL::*;
-				use MusicData::*;
 				match music_data {
+					Backup(_) => {},
 					Note(music_xml::Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(pitch), ..}) => {
-						score.pitch(score.x(), staves.index(staff), pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
+						score.pitch(x, staves.index(staff), pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
 					},
 					Attributes(music_xml::Attributes{clefs, key, time, ..}) => {
-						let x = score.x();
+						x = score.x();
 						for clef@Clef{staff, sign, ..} in clefs {
 							let mut staff = staves.index_mut(staff);
 							staff.clef = Some(*clef);
 							let (id, step) = {use ClefSign::*; match sign { G=>(clef::G, Step::G), F=>(clef::F, Step::F) }};
 							score.pitch(x, staff.as_ref(), &Pitch::new(clef, &step), id);
 						}
-						let x = score.x();
+						x = score.x();
 						if let Some(Key{fifths,..}) = key {
 							let mut key = |fifths:i8, symbol| {
 								let mut sign = |steps: &mut dyn Iterator<Item=&Step>| {
@@ -133,7 +158,7 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 							//if fifths == 0 { key(system.fifths, accidental::natural) } else
 							key(*fifths, if *fifths<0 { accidental::flat } else { accidental::sharp });
 						}
-						let x = score.x();
+						x = score.x();
 						if let Some(Time{beats, beat_type}) = time {
 							fn time_signature_digit(digit: char) -> char { use std::convert::TryInto; u32::try_into(u32::from(time_signature)+digit.to_digit(10).unwrap()).unwrap() }
 							let texts : [String; 2] = framework::array::Iterator::collect(
@@ -153,10 +178,14 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 								}
 							}
 						}
+						x = score.x();
 					},
-					_ => (),
+					_ => {},
 				}
 			}
+			let x = score.x();
+			fill.push(Rect{top_left: xy{x, y: score.y(staves.len()-1, 0)}, bottom_right: xy{x: x+1, y: score.y(0, -8)}});
+			//panic!("DONE");
 		}
 	}
 	Graphic{scale: Ratio{num: 360, div: score.staff_height}, fill, font: &font, glyph: score.glyph}
