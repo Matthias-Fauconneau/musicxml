@@ -14,8 +14,9 @@ serde_derive = '' # 2s
 roxmltree = ''
 itertools = ''
 derive-more = { package='derive_more', version='' }
+ttf-parser = ''
 
 [dependencies.framework]
 path = 'framework'
 #git = "https://github.com/Matthias-Fauconneau/framework"
-features = ['fehler','anyhow','graphic','window','font-file','trace','signal-hook','timeout']
+features = ['fehler','anyhow','graphic','text','window','font-file','trace','signal-hook','timeout']

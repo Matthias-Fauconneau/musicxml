@@ -209,8 +209,8 @@ pub struct Key {
 
 #[derive(Debug, Deserialize)]#[serde(rename="time",rename_all="kebab-case")]
 pub struct Time {
-	beats: u8,
-	beat_type: u8,
+	pub beats: u8,
+	pub beat_type: u8,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone, Copy)]#[serde(rename=/*"clef-sign"*/"sign")]
@@ -228,7 +228,7 @@ pub struct Clef {
 pub struct Attributes {
 	divisions: Option<u16>,
 	pub key: Option<Key>,
-	time: Option<Time>,
+	pub time: Option<Time>,
 	staves: Option<u8>,
 	#[serde(rename="clef*")]
 	pub clefs: Vec<Clef>,
