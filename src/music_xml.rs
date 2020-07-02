@@ -203,7 +203,7 @@ pub struct Print {
 
 #[derive(Debug, Deserialize)]#[serde(rename="key",rename_all="kebab-case")]
 pub struct Key {
-	fifths: i8,
+	pub fifths: i8,
 	mode: Option<String>,
 }
 
@@ -227,7 +227,7 @@ pub struct Clef {
 #[derive(Debug, Deserialize)]#[serde(rename="attributes",rename_all="kebab-case")]
 pub struct Attributes {
 	divisions: Option<u16>,
-	key: Option<Key>,
+	pub key: Option<Key>,
 	time: Option<Time>,
 	staves: Option<u8>,
 	#[serde(rename="clef*")]
@@ -334,14 +334,14 @@ pub struct Stem {
 	//color
 }
 
-#[derive(Debug, Deserialize)]#[serde(rename="step")]
+#[derive(Debug, Deserialize,Clone,Copy)]#[serde(rename="step")]
 pub enum Step { C,D,E,F,G,A,B }
 
 #[derive(Debug, Deserialize)]#[serde(rename="pitch",rename_all="kebab-case")]
 pub struct Pitch {
 	pub step: Step,
-	alter: /*-1..1*/Option<f32>,
-	octave: Option</*0-9=4*/u8>,
+	pub alter: /*-1..1*/Option<f32>,
+	pub octave: Option</*0-9=4*/u8>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="rest",rename_all="kebab-case")]

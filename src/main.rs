@@ -1,5 +1,6 @@
 #![feature(bindings_after_at)]
 #![allow(non_upper_case_globals)]
+#![allow(incomplete_features)]#![feature(const_generics)]
 mod xml;
 mod music_xml; use music_xml::MusicXML;
 #[allow(non_snake_case)] mod SMuFL {
@@ -14,6 +15,11 @@ mod music_xml; use music_xml::MusicXML;
 		pub const half : char = '\u{E0A3}';
 		pub const black : char = '\u{E0A4}';
 	}
+	pub mod accidental {
+		pub const flat : char = '\u{E260}';
+		//pub const natural : char = '\u{E261}';
+		pub const sharp : char = '\u{E262}';
+	}
 }
 use framework::*;
 
@@ -22,11 +28,18 @@ lazy_static::lazy_static! {
 }
 
 fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
-	let staff_height = font.units_per_em().unwrap() as u32;
-	let interval = staff_height / 4; // 90
-	let staff_distance = 9*interval;
+	struct Sheet { staff_height: u32, staff_distance: u32 }
+	impl Sheet {
+		// staff: 0: bass .. 1: treble; step: -8: bottom .. 0: top
+		fn y(&self, staff: usize, step: i8) -> i32 { - ((staff as u32 * self.staff_distance) as i32) - step as i32 * (self.staff_height/8) as i32 }
+	}
 
-	let y = |staff:usize, step:i32| -> i32 { - ((staff as u32 * staff_distance) as i32) - step * (interval/2) as i32 }; // staff: 0: bass .. 1: treble; step: -8: bottom .. 0: top
+	let sheet = {
+		let staff_height = font.units_per_em().unwrap() as u32;
+		let interval = staff_height / 4; // 90
+		let staff_distance = 9*interval;
+		Sheet{staff_height, staff_distance}
+	};
 
 	use music_xml::*;
 	#[derive(Default)] struct Staff { clef: Option<Clef>, octave: i8 };
@@ -34,45 +47,97 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 	let mut fill = Vec::new();
 	for (staff, _) in staves.iter().enumerate() {
 		for step in (-8..=0).step_by(2) {
-			let y = y(staff, step);
+			let y = sheet.y(staff, step);
 			fill.push(Rect{top_left: xy{x:0, y}, bottom_right: xy{x: width, y: y+1}});
 		}
 	}
 
-	let mut glyph = Vec::new();
+	use derive_more::{Deref, DerefMut};
+	#[derive(Deref)] struct Score { #[deref] sheet: Sheet, glyph: Vec<Glyph> }
+	impl Score { fn new(sheet: Sheet) -> Self { Self{sheet, glyph: Vec::new()} } }
+	let mut score = Score::new(sheet);
 	for part in &music.score_partwise.parts {
 		for measure in &part.measures {
 			for music_data in &measure.music_data {
-				let x = glyph.last().map(|g:&Glyph| (g.top_left+font.size(g.id).into()).x).unwrap_or(0);
-				let mut glyph = |staff, step, id| {
-					let id = font.glyph_index(id).unwrap();
-					glyph.push(Glyph{top_left: xy{
-						x: x + font.glyph_hor_side_bearing(id).unwrap() as i32,
-						y: y(staff, step) - font.glyph_bounding_box(id).unwrap().y_max as i32,
-					}, id})
-				};
-				use SMuFL::*;
+
 				impl From<&music_xml::Staff> for usize { fn from(staff: &music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
+				#[derive(Deref)] struct StaffRef<'t> { index: usize, #[deref] staff: &'t Staff }
+				trait Index { fn index(&self, index: &music_xml::Staff) -> StaffRef; }
+				impl Index for [Staff] {
+					fn index(&self, index: &music_xml::Staff) -> StaffRef { let index = index.into(); StaffRef{index, staff: &self[index]} }
+				}
+				#[derive(Deref, DerefMut)] struct StaffMut<'t> { index: usize, #[deref]#[deref_mut] staff: &'t mut Staff }
+				trait IndexMut { fn index_mut(&mut self, index: &music_xml::Staff) -> StaffMut; }
+				//impl<N: usize> IndexMut for &mut [Staff; N] {
+				impl IndexMut for [Staff] {
+					fn index_mut(&mut self, index: &music_xml::Staff) -> StaffMut { let index = index.into(); StaffMut{index, staff: &mut self[index]} }
+				}
+				impl StaffMut<'_> { fn as_ref(&self) -> StaffRef { StaffRef{index: self.index, staff: &self.staff} } }
+
+				impl Pitch {
+					fn new(clef: &Clef, step: &Step) -> Self {
+						use Step::*;
+						match clef {
+							Clef{sign: ClefSign::G,..} => Pitch{step: *step, octave: Some(match step { G|A|B => 4, C|D|E|F => 5 }), alter: None},
+							Clef{sign: ClefSign::F,..} => Pitch{step: *step, octave: Some(match step { A|B => 2, C|D|E|F|G => 3 }), alter: None},
+						}
+					}
+				}
+
+				impl Score {
+					fn x(&self) -> i32 { self.glyph.last().map(|g:&Glyph| (g.top_left+font.size(g.id).into()).x).unwrap_or(0) }
+					fn push(&mut self, x:  i32, staff: StaffRef, pitch: &Pitch, id: char) {
+						impl Staff { #[allow(non_snake_case)] fn C4(&self) -> i8 {
+							use ClefSign::*; (match self.clef.as_ref().unwrap().sign { G=> -10, F=> 2 }) - self.octave*7 } } // -8: bottom .. 0: top
+						impl From<&Step> for i8 { fn from(step: &Step) -> Self { use Step::*; match step { C=>0, D=>1, E=>2, F=>3, G=>4, A=>5, B=>6 } } }
+						let step = Staff::C4(&staff) + (pitch.octave.unwrap_or(4) as i8 - 4)*7 + i8::from(&pitch.step);
+						let id = font.glyph_index(id).unwrap();
+						self.glyph.push(Glyph{top_left: xy{
+							x: x + font.glyph_hor_side_bearing(id).unwrap() as i32,
+							y: self.y(staff.index, step) - font.glyph_bounding_box(id).unwrap().y_max as i32,
+						}, id})
+					}
+				}
+
+				use SMuFL::*;
+				use MusicData::*;
 				match music_data {
-					MusicData::Note(Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(Pitch{step, ..}), ..}) => {
-						let staff = staff.into();
-						let Staff{clef, octave} = &staves[staff];
-						let step = {use Step::*; match step { C=>0, D=>1, E=>2, F=>3, G=>4, A=>5, B=>6 }};
-						let step = step - {use ClefSign::*; match clef.as_ref().unwrap().sign { G=>10, F=> -2 }} - (*octave as i32)*7;
-						glyph(staff, step, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
+					Note(music_xml::Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(pitch), ..}) => {
+						score.push(score.x(), staves.index(staff), pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
 					},
-					MusicData::Attributes(Attributes{clefs, ..}) => for clef@Clef{staff, sign, ..} in clefs {
-						let staff : usize = staff.into();
-						staves[staff].clef = Some(*clef);
-						let (id, step) = {use ClefSign::*; match sign { G=>(clef::G, -6), F=>(clef::F, -2) }};
-						glyph(staff, step, id);
+					Attributes(music_xml::Attributes{clefs, key, ..}) => {
+						{
+							let x = score.x();
+							for clef@Clef{staff, sign, ..} in clefs {
+								let mut staff = staves.index_mut(staff);
+								staff.clef = Some(*clef);
+								let (id, step) = {use ClefSign::*; match sign { G=>(clef::G, Step::G), F=>(clef::F, Step::F) }};
+								score.push(x, staff.as_ref(), &Pitch::new(clef, &step), id);
+							}
+						}
+						let x = score.x();
+						if let Some(Key{fifths,..}) = key {
+							let mut key = |fifths:i8, symbol| {
+								let mut sign = |steps: &mut dyn Iterator<Item=&Step>| {
+									for step in steps {
+										for (index, Staff{clef, ..}) in staves.iter().enumerate() {
+											score.push(x, StaffRef{index, staff: &Staff{clef: *clef, octave: 0}}, &Pitch::new(clef.as_ref().unwrap(), step), symbol);
+										}
+									}
+								};
+								let steps = {use Step::*; [B,E,A,D,G,C,F].iter()};
+								if fifths>0 { sign(&mut steps.rev().take(fifths as usize)) } else { sign(&mut steps.take((-fifths) as usize)) }
+							};
+							//if fifths == 0 { key(system.fifths, accidental::natural) } else
+							key(*fifths, if *fifths<0 { accidental::flat } else { accidental::sharp });
+						}
 					},
 					_ => (),
 				}
 			}
 		}
 	}
-	Graphic{scale: Ratio{num: 360, div: staff_height}, fill, font: &font, glyph}
+	Graphic{scale: Ratio{num: 360, div: score.staff_height}, fill, font: &font, glyph: score.glyph}
 }
 
 #[throws] fn main() {

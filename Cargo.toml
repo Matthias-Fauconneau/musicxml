@@ -13,6 +13,7 @@ serde_derive = '' # 2s
 #serde-derive = { package='wa-serde-derive', version='' } # 20s :/
 roxmltree = ''
 itertools = ''
+derive-more = { package='derive_more', version='' }
 
 [dependencies.framework]
 path = 'framework'
