@@ -32,9 +32,12 @@ pub struct Encoding {
 
 #[derive(Debug, Deserialize)]#[serde(rename="identification",rename_all="kebab-case")]
 pub struct Identification {
+	#[serde(rename="creator*")]
 	creator: Vec<String>,
+	#[serde(rename="rights*")]
 	rights: Vec<String>,
 	encoding: Option<Encoding>,
+	source: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="scaling",rename_all="kebab-case")]
@@ -55,8 +58,8 @@ pub struct PageMargins {
 
 #[derive(Debug, Deserialize)]#[serde(rename="page-layout",rename_all="kebab-case")]
 pub struct PageLayout {
-	page_height: u32,
-	page_width: u32,
+	page_height: f32,
+	page_width: f32,
 	#[serde(rename="page-margins{0,2}")]
 	page_margins: Vec<PageMargins>,
 }
@@ -79,6 +82,7 @@ pub struct Defaults {
 	//appearance: Option<Appearance>,
 	//music_font: Option<Font>
 	word_font: Option<Font>,
+	#[serde(rename="lyric-font*")]
 	lyric_font: Vec<Font>
 	//lyric_language: Vec<lyric-language>
 }
@@ -144,6 +148,13 @@ pub struct MidiInstrument {
 	pan: Option<f32>,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="part-group",rename_all="kebab-case")]
+pub struct PartGroup {
+	r#type: /*group-name*/Option<String>,
+	group_symbol: Option<String>,
+	number: Option<u32>,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="score-part",rename_all="kebab-case")]
 pub struct ScorePart {
 	id: String,
@@ -156,6 +167,7 @@ pub struct ScorePart {
 
 #[derive(Debug, Deserialize)]#[serde(rename="part-list",rename_all="kebab-case")]
 pub struct PartList {
+	part_group: PartGroup,
 	score_part: ScorePart,
 }
 
@@ -192,6 +204,7 @@ pub struct Print {
 #[derive(Debug, Deserialize)]#[serde(rename="key",rename_all="kebab-case")]
 pub struct Key {
 	fifths: i8,
+	mode: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="time",rename_all="kebab-case")]
@@ -371,6 +384,21 @@ pub struct Articulations {
 	content: Vec<ArticulationData>,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="fingering",rename_all="kebab-case")]
+pub struct Fingering {
+	#[serde(rename="$")]
+	finger: /*1-5*/u8,
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
+pub enum TechnicalData { Fingering(Fingering) }
+
+#[derive(Debug, Deserialize)]#[serde(rename="technical",rename_all="kebab-case")]
+pub struct Technical {
+	#[serde(rename="")]
+	content: Vec<TechnicalData>,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
 pub enum Notation {
 	Tied(Tied),
@@ -379,9 +407,9 @@ pub enum Notation {
 		tuplet
 		glissando
 		slide
-		ornaments
-		technical
-		dynamics
+		ornaments*/
+	Technical(Technical),
+		/*dynamics
 		fermata
 		arpeggiate
 		non-arpeggiate
@@ -480,7 +508,7 @@ pub struct Part {
 
 #[derive(Debug, Deserialize)]#[serde(rename="score-partwise",rename_all="kebab-case")]
 pub struct ScorePartwise {
-	version: String,
+	version: Option<String>,
 	work: Option<Work>,
 	identification: Identification,
 	defaults: Defaults,

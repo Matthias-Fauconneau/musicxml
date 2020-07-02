@@ -55,27 +55,25 @@ impl<'de> de::Deserializer<'de> for DefaultDeserializer {
 	}
 }
 
+use anyhow::Context;
+
 struct TextDeserializer<'de>(&'de str);
 impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 	type Error = Error;
-	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		//if !self.0.trim().is_empty() { println!("text any->str {}", &visitor as &dyn de::Expected); }
-		visitor.visit_str::<Error>(self.0)?
-	}
+	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_str::<Error>(self.0)? }
 	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
 	#[throws] fn deserialize_str<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_str::<Error>(self.0)? }
 	#[throws] fn deserialize_string<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_string::<Error>(self.0.to_owned())? }
 	#[throws] fn deserialize_u8<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u8::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_u16<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u16::<Error>(self.0.parse()?)? }
-	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u32::<Error>(self.0.parse()?)? }
+	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u32::<Error>(self.0.parse().with_context(|| self.0.to_string())?)? }
 	#[throws] fn deserialize_i8<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i8::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_i16<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i16::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_i32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i32::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_f32::<Error>(self.0.parse()?)? }
-	#[throws] fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_bool::<Error>(/*self.0.parse()*/from_yes_no(self.0)?)? }
+	#[throws] fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_bool::<Error>(from_yes_no(self.0)?)? }
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(self, _name: &'static str, _variants: &'static [&'static str], visitor: V) -> V::Value {
 		visitor.visit_enum(<&str as ::serde::de::IntoDeserializer<Error>>::into_deserializer(self.0))?
-		//visitor.visit_enum::<Error>(self.0.into_deserializer()?)?
 	}
 
 	::serde::forward_to_deserialize_any!{
@@ -124,11 +122,10 @@ impl<'de> ElementDeserializer<'de> {
 		Self{name: node.tag_name().name(), attributes: node.attributes().iter().peekable(), children: node.children().peekable()}
 	}
 
-	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		//println!("deserialize struct '{}' {:?} '{:?}'", name, fields, self);
-		let cell = std::cell::RefCell::new(self);
-		//let mut index = 0;
+	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
 		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
+		let cell = std::cell::RefCell::new(self);
+		//println!("deserialize struct '{}' {:?} '{:?}'", name, fields, cell.borrow());
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
 			//println!("map iter '{}' {:?} {:?}", name, fields, node);
@@ -220,13 +217,16 @@ impl<'de> ElementDeserializer<'de> {
 					}
 				}
 			}
-		})))?
+		}))).map_err(|e| { println!("{}", e); e }).with_context(|| format!("{}:{:?} {:?}", name, fields, cell.borrow().name))?
 	}
 
 	#[throws] fn simple_content(&mut self) -> &'de str {
-		let text = self.children.next().ok_or_else(|| anyhow::Error::msg(format!("Expected simple content, got {:?}", self)))?;
-		ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected simple content, got {:?}", self);
-		text.text().unwrap()
+		if let Some(text) = self.children.next() {
+			ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected simple content, got {:?}", self);
+			text.text().unwrap()
+		} else {
+			"" // Empty content yields empty string
+		}
     }
 }
 
@@ -263,7 +263,7 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 	}
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		let value = self.deserialize_struct(name, fields, visitor)?;
+		let value = self.deserialize_struct(name, fields, visitor)?;//.with_context(|| format!("{}:{:?}", name, fields))?;
 		while self.children.peek().filter(|child| child.is_text() && child.text().unwrap().trim().is_empty()).is_some() { self.children.next(); }
 		use itertools::Itertools; assert!(self.attributes.peek().is_none() && self.children.peek().is_none(), "Remaining {:?} in {:?}", self.children.clone().format(" "), self);
 		value
