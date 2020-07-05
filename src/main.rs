@@ -4,6 +4,8 @@
 mod xml;
 mod music_xml; use music_xml::MusicXML;
 #[allow(non_snake_case)] mod SMuFL {
+	pub struct EngravingDefaults {pub staff_line_thickness: u8, pub stem_thickness: u8, pub thin_barline_thickness: u8}
+	#[derive(PartialEq)] pub enum Anchor { StemDownNW, StemUpSE }
 	pub mod clef {
 		pub const G : char = '\u{E050}';
 		pub const F : char = '\u{E062}';
@@ -34,6 +36,15 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 		fn y(&self, staff: usize, step: i8) -> i32 { - ((staff as u32 * self.staff_distance) as i32) - step as i32 * (self.staff_height/8) as i32 }
 	}
 
+	// Bravura
+	assert_eq!(font.units_per_em(), Some(1000));
+	use SMuFL::*;
+	//stemLength = 7*halfLineInterval
+	//shortStemLength = 5*halfLineInterval;
+	let engraving_defaults = EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40};
+	use Anchor::*;
+	let glyphs_with_anchors = [(note_head::black, [(StemDownNW, xy{x: 0, y:-42}), (StemUpSE, xy{x: 236, y:42})])];
+
 	let sheet = {
 		let staff_height = font.units_per_em().unwrap() as u32;
 		let interval = staff_height / 4; // 90
@@ -46,9 +57,8 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 	let mut staves : [Staff; 2] = array::Iterator::collect(std::iter::from_fn(|| Some(Staff::default()))); //[Staff::default; 2];
 	let mut fill = Vec::new();
 	for (staff, _) in staves.iter().enumerate() {
-		for step in (-8..=0).step_by(2) {
-			let y = sheet.y(staff, step);
-			fill.push(Rect{top_left: xy{x:0, y}, bottom_right: xy{x: width, y: y+1}});
+		for step in (0..=8).step_by(2) {
+			fill.push(Rect::horizontal(sheet.y(staff, step), engraving_defaults.staff_line_thickness, 0, width));
 		}
 	}
 
@@ -74,10 +84,14 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 				buffer.sort_by_key(|&(t,_)| t);
 				buffer
 			};
+
+			let mut music_data = music_data.iter().peekable();
+
 			let (mut t, mut x) = (0, score.x());
-			for (next_t, music_data) in music_data {
-				if next_t > t { x = score.x(); }
-				t = next_t;
+			while let Some((next_t, music_data_element)) = music_data.next() {
+				if *next_t > t { x = score.x(); }
+				t = *next_t;
+
 				impl std::fmt::Display for MusicData { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
 					write!(f, "{}", match self {
 						Note(_) => "Note",
@@ -85,7 +99,9 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 						_ => "_",
 					})
 				}}
-				println!("{} {} {}", t, x, music_data);
+				println!("{} {} {}", t, x, music_data_element);
+
+				impl From<&Step> for i8 { fn from(step: &Step) -> Self { use Step::*; match step { C=>0, D=>1, E=>2, F=>3, G=>4, A=>5, B=>6 } } }
 
 				impl From<&music_xml::Staff> for usize { fn from(staff: &music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
 				#[derive(Deref)] struct StaffRef<'t> { index: usize, #[deref] staff: &'t Staff }
@@ -109,6 +125,13 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 						}
 					}
 				}
+				impl From<&Pitch> for i8 { fn from(pitch: &Pitch) -> Self { (pitch.octave.unwrap_or(4) as i8 - 4)*7 + i8::from(&pitch.step) } }
+
+				impl Staff {
+					#[allow(non_snake_case)]
+					fn C4(&self) -> i8 { use ClefSign::*; (match self.clef.as_ref().unwrap().sign { G=> -2, F=> 10 }) - self.octave*7 }
+					fn step(&self, pitch: &Pitch) -> i8 { self.C4() + i8::from(pitch) }
+				}
 
 				impl Score {
 					fn x(&self) -> i32 { self.glyph.last().map(|g:&Glyph| g.top_left.x+font.glyph_hor_advance(g.id).unwrap() as i32).unwrap_or(0) }
@@ -119,20 +142,41 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 						}, id})
 					}
 					fn pitch(&mut self, x:  i32, staff: StaffRef, pitch: &Pitch, id: char) {
-						impl Staff { #[allow(non_snake_case)] fn C4(&self) -> i8 {
-							use ClefSign::*; (match self.clef.as_ref().unwrap().sign { G=> -10, F=> 2 }) - self.octave*7 } } // -8: bottom .. 0: top
-						impl From<&Step> for i8 { fn from(step: &Step) -> Self { use Step::*; match step { C=>0, D=>1, E=>2, F=>3, G=>4, A=>5, B=>6 } } }
-						let step = Staff::C4(&staff) + (pitch.octave.unwrap_or(4) as i8 - 4)*7 + i8::from(&pitch.step);
-						let id = font.glyph_index(id).unwrap();
-						self.push(x, staff.index, step, id)
+						self.push(x, staff.index, staff.step(pitch), font.glyph_index(id).unwrap())
 					}
 				}
 
-				use SMuFL::*;
-				match music_data {
+				match music_data_element {
 					Backup(_) => {},
-					Note(music_xml::Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(pitch), ..}) => {
-						score.pitch(x, staves.index(staff), pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
+					Note(note@music_xml::Note{staff: Some(staff),..}) => {
+						let mut chord = Vec::<&music_xml::Note>::new();
+						chord.push(note);
+						while let Some((_, Note(music_xml::Note{staff: Some(_), chord: Some(_),..}))) = music_data.peek() {
+							if let Some((_, Note(note))) = music_data.next() { chord.push(note) } else { unreachable!(); }
+						}
+						//float opacity = allTied(beam[0]) ? 1./2 : 1;
+						{ // Stem
+							impl music_xml::Note {
+								fn pitch(&self) -> Option<&Pitch> { if let NoteData::Pitch(pitch) = &self.content { Some(pitch) } else { None } }
+								fn has_stem(&self) -> bool { self.r#type.as_ref().unwrap().value <= NoteTypeValue::Half }
+							}
+							let step = |note:&&music_xml::Note| note.pitch().map(|pitch| staves.index(&note.staff.unwrap()).step(&pitch));
+
+							use framework::graphic::Bounds;
+							let (bottom, top) = chord.iter().filter(|x| music_xml::Note::has_stem(x)).filter_map(step).map(|e|(e,e)).bounds().unwrap();
+
+							let anchors = &glyphs_with_anchors.iter().find(|(id,_)| id == &note_head::black).unwrap().1;
+							let staff = staves.index(staff);
+							//let EngravingDefaults{stem_thickness,..} = engraving_defaults;
+							let (anchor, top, bottom) = if top-4 > 4-bottom { (StemDownNW, top, bottom-7) } else { (StemUpSE, top+7, bottom) };
+							let xy{x, y: dy} = xy{x, y: 0} + anchors.iter().find(|(id,_)| id == &anchor).unwrap().1;
+							fill.push(Rect::vertical(x, engraving_defaults.stem_thickness, score.y(staff.index, top)+dy, score.y(staff.index, bottom)+dy));
+						}
+						//if(sign.note.value>=Eighth) glyph(vec2(x, yStem), (int(sign.note.value)-Eighth)*2 + (stemUp ? SMuFL::Flag::Above : SMuFL::Flag::Below), opacity, 7);
+						// Heads
+						for note in chord { if let music_xml::Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(pitch), ..} = note {
+							score.pitch(x, staves.index(staff), pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
+						} else { unreachable!() }}
 					},
 					Attributes(music_xml::Attributes{clefs, key, time, ..}) => {
 						x = score.x();
@@ -169,7 +213,7 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 							);
 							let width = texts.iter().map(|text| text.size().x).max().unwrap();
 							use framework::array::IntoIterator;
-							for (text, step) in texts.iter().zip([-2,-6].into_iter()) {
+							for (text, step) in texts.iter().zip([6,2].into_iter()) {
 								let x = x + ((width-text.size().x)/2) as i32;
 								for text::Layout{x: dx, glyph: (_, id), ..} in text.font.glyphs(text.text.char_indices()).layout() {
 									for index in 0..staves.len() {
@@ -184,8 +228,7 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 				}
 			}
 			let x = score.x();
-			fill.push(Rect{top_left: xy{x, y: score.y(staves.len()-1, 0)}, bottom_right: xy{x: x+1, y: score.y(0, -8)}});
-			//panic!("DONE");
+			fill.push(Rect::vertical(x, engraving_defaults.thin_barline_thickness, score.y(staves.len()-1, 8), score.y(0, 0)));
 		}
 	}
 	Graphic{scale: Ratio{num: 360, div: score.staff_height}, fill, font: &font, glyph: score.glyph}
