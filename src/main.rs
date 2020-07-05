@@ -43,7 +43,9 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 	//shortStemLength = 5*halfLineInterval;
 	let engraving_defaults = EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40};
 	use Anchor::*;
-	let glyphs_with_anchors = [(note_head::black, [(StemDownNW, xy{x: 0, y:-42}), (StemUpSE, xy{x: 236, y:42})])];
+	let glyphs_with_anchors = [(note_head::black, [
+		(StemDownNW, xy{x: 0, y:-42}),
+		(StemUpSE, xy{x: font.glyph_bounding_box(font.glyph_index(note_head::black).unwrap()).unwrap().x_max as i32, y:42})])];
 
 	let sheet = {
 		let staff_height = font.units_per_em().unwrap() as u32;
@@ -165,12 +167,16 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 							use framework::graphic::Bounds;
 							let (bottom, top) = chord.iter().filter(|x| music_xml::Note::has_stem(x)).filter_map(step).map(|e|(e,e)).bounds().unwrap();
 
+							let stem_thickness = engraving_defaults.stem_thickness as i32;
 							let anchors = &glyphs_with_anchors.iter().find(|(id,_)| id == &note_head::black).unwrap().1;
 							let staff = staves.index(staff);
-							//let EngravingDefaults{stem_thickness,..} = engraving_defaults;
 							let (anchor, top, bottom) = if top-4 > 4-bottom { (StemDownNW, top, bottom-7) } else { (StemUpSE, top+7, bottom) };
 							let xy{x, y: dy} = xy{x, y: 0} + anchors.iter().find(|(id,_)| id == &anchor).unwrap().1;
-							fill.push(Rect::vertical(x, engraving_defaults.stem_thickness, score.y(staff.index, top)+dy, score.y(staff.index, bottom)+dy));
+							if anchor == StemDownNW { // Left align
+								fill.push(Rect{top_left: xy{x, y: score.y(staff.index, top)+dy}, bottom_right: xy{x: x+stem_thickness, y: score.y(staff.index, bottom)+dy}});
+							} else { // Right align
+								fill.push(Rect{top_left: xy{x: x-stem_thickness, y: score.y(staff.index, top)+dy}, bottom_right: xy{x, y: score.y(staff.index, bottom)+dy}});
+							}
 						}
 						//if(sign.note.value>=Eighth) glyph(vec2(x, yStem), (int(sign.note.value)-Eighth)*2 + (stemUp ? SMuFL::Flag::Above : SMuFL::Flag::Below), opacity, 7);
 						// Heads
