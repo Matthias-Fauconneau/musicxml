@@ -57,7 +57,7 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 		}
 	};
 
-	let scale = Ratio{num: 270, div: sheet.staff_height};
+	let scale = Ratio{num: 240, div: sheet.staff_height};
 	let size = size / scale;
 
 	use music_xml::*;
@@ -69,6 +69,8 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 	let mut glyph = Vec::new();
 	for part in &music.score_partwise.parts {
 		let mut system = xy{x: 0, y: 0};
+		let space = sheet.staff_height / 4;
+
 		impl Sheet {
 			fn raster<'t>(&'t self, staves: impl Iterator<Item=&'t Staff> + 't) -> impl Iterator<Item=Rect> + 't {
 				staves.enumerate().map(move |(staff, _)|
@@ -104,7 +106,10 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 			let mut music_data = music_data.iter().peekable();
 			let (mut t, mut x) = (0, 0);
 			while let Some((next_t, music_data_element)) = music_data.next() {
-				if *next_t > t { x = measure.x(); }
+				if *next_t > t {
+					x = measure.x();
+					x += space as i32;
+				}
 				t = *next_t;
 
 				impl std::fmt::Display for MusicData { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -246,19 +251,18 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 					_ => {},
 				}
 			}
-			x = measure.x();
+			x = measure.x() + (space / 2) as i32;
 			if system.x + x > size.x as i32 {
 				system.x = 0;
 				system.y += 2*sheet.staff_distance as i32;
 				fill.extend(sheet.raster(staves.iter()).map(|mut x| { x.translate(xy{x:0, y: system.y}); x }));
 			}
-			/*trait Apply : Iterator { fn apply<F:Fn(&mut Self::Item), A: Iterator<Item=Self::Item>>(self, f: F) -> A; }
-			impl<I:Iterator> Apply for I { fn apply<F:Fn(&mut Self::Item), A: Iterator<Item=Self::Item>>(self, f: F) -> A { self.map(|x| { f(x); x }) } }
-			glyph.extend(measure.glyph.iter().apply(|mut x| x.translate(system)));*/
 			fill.extend(measure.fill.into_iter().map(|mut x| { x.translate(system); x }));
 			glyph.extend(measure.glyph.into_iter().map(|mut x| { x.translate(system); x }));
-			if system.x > 0 { fill.push(Rect::vertical(system.x, sheet.engraving_defaults.thin_barline_thickness, system.y+sheet.y(staves.len()-1, 8), system.y+sheet.y(0, 0))); }
-			system.x += x;
+			if system.x > 0 {
+				fill.push(Rect::vertical(system.x - (space / 2) as i32, sheet.engraving_defaults.thin_barline_thickness, system.y+sheet.y(staves.len()-1, 8), system.y+sheet.y(0, 0)));
+			}
+			system.x += x + (space / 2) as i32;
 		}
 	}
 	Graphic{scale, fill, font: &font, glyph}
