@@ -295,7 +295,7 @@ pub struct Direction {
 	direction_type: Vec<DirectionType>,
 }
 
-#[derive(Debug, Deserialize, PartialEq, PartialOrd)]#[serde(rename_all="kebab-case")]
+#[derive(Debug, Deserialize, PartialEq, PartialOrd, Clone, Copy)]#[serde(rename_all="kebab-case")]
 pub enum NoteTypeValue {
 	#[serde(rename="1024th")] _1024th,
 	#[serde(rename="512th")] _512th,

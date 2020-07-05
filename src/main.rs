@@ -5,7 +5,7 @@ mod xml;
 mod music_xml; use music_xml::MusicXML;
 #[allow(non_snake_case)] mod SMuFL {
 	pub struct EngravingDefaults {pub staff_line_thickness: u8, pub stem_thickness: u8, pub thin_barline_thickness: u8}
-	#[derive(PartialEq)] pub enum Anchor { StemDownNW, StemUpSE }
+	#[derive(PartialEq)] pub enum Anchor { StemUpNW, StemDownNW, StemUpSE, StemDownSW }
 	pub mod clef {
 		pub const G : char = '\u{E050}';
 		pub const F : char = '\u{E062}';
@@ -16,12 +16,21 @@ mod music_xml; use music_xml::MusicXML;
 		pub const half : char = '\u{E0A3}';
 		pub const black : char = '\u{E0A4}';
 	}
+
+	pub mod flag {
+		pub const up : char = '\u{E240}';
+		pub const down : char = '\u{E241}';
+		pub fn from(flag: char, value: u32) -> char { use std::convert::TryInto; u32::try_into(u32::from(flag)+value*2).unwrap() }
+	}
 	pub mod accidental {
 		pub const flat : char = '\u{E260}';
 		//pub const natural : char = '\u{E261}';
 		pub const sharp : char = '\u{E262}';
 	}
-	pub const time_signature : char = '\u{E080}';
+	pub mod time_signature {
+		pub const zero : char = '\u{E080}';
+		pub fn from(digit: char) -> char { use std::convert::TryInto; u32::try_into(u32::from(zero)+digit.to_digit(10).unwrap()).unwrap() }
+	}
 }
 use framework::*;
 
@@ -33,13 +42,15 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 	// Bravura
 	assert_eq!(font.units_per_em(), Some(1000));
 	use SMuFL::*;
-	//stemLength = 7*halfLineInterval
-	//shortStemLength = 5*halfLineInterval;
 	use Anchor::*;
-	let glyphs_with_anchors = [(note_head::black, [
-		(StemDownNW, xy{x: 0, y: 42}),
-		(StemUpSE, xy{x: font.glyph_bounding_box(font.glyph_index(note_head::black).unwrap()).unwrap().x_max as i32-1, y: -42})
-	])];
+	let glyphs_with_anchors = [
+		(note_head::black, vec!(
+			(StemDownNW, xy{x: 0, y: 42}),
+			(StemUpSE, xy{x: font.glyph_bounding_box(font.glyph_index(note_head::black).unwrap()).unwrap().x_max as i32-1, y: -42})
+		)),
+		(flag::up, vec!((StemUpNW, xy{x: 0, y:10}))),
+		(flag::down, vec!((StemDownSW, xy{x: 0, y:-33})))
+	];
 
 	struct Sheet { engraving_defaults: EngravingDefaults, staff_height: u32, staff_distance: u32 }
 	impl Sheet {
@@ -155,14 +166,17 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 
 				impl Measure<'_> {
 					fn x(&self) -> i32 { self.glyph.last().map(|g:&Glyph| g.top_left.x+font.glyph_hor_advance(g.id).unwrap() as i32).unwrap_or(0) }
-					fn push(&mut self, x: i32, staff_index: usize, step: i8, id: ttf_parser::GlyphId) {
+					fn push_id(&mut self, x: i32, staff_index: usize, step: i8, dy: i32, id: ttf_parser::GlyphId) {
 						self.glyph.push(Glyph{top_left: xy{
 							x: x + font.glyph_hor_side_bearing(id).unwrap() as i32,
-							y: self.y(staff_index, step) - font.glyph_bounding_box(id).unwrap().y_max as i32,
+							y: self.y(staff_index, step) - font.glyph_bounding_box(id).unwrap().y_max as i32 + dy,
 						}, id})
 					}
+					fn push(&mut self, x:  i32, staff_index: usize, step: i8, dy: i32, id: char) {
+						self.push_id(x, staff_index, step, dy, font.glyph_index(id).unwrap())
+					}
 					fn pitch(&mut self, x:  i32, staff: StaffRef, pitch: &Pitch, id: char) {
-						self.push(x, staff.index, staff.step(pitch), font.glyph_index(id).unwrap())
+						self.push(x, staff.index, staff.step(pitch), 0, id)
 					}
 				}
 
@@ -186,17 +200,27 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 							let (bottom, top) = chord.iter().filter(|x| music_xml::Note::has_stem(x)).filter_map(step).map(|e|(e,e)).bounds().unwrap();
 
 							let stem_thickness = sheet.engraving_defaults.stem_thickness as i32;
-							let anchors = &glyphs_with_anchors.iter().find(|(id,_)| id == &note_head::black).unwrap().1;
 							let staff = staves.index(staff);
-							let (anchor, top, bottom) = if top-4 > 4-bottom { (StemDownNW, top, bottom-7) } else { (StemUpSE, top+7, bottom) };
-							let xy{x, y: dy} = xy{x, y: 0} + anchors.iter().find(|(id,_)| id == &anchor).unwrap().1;
+
+							let (anchor, base, stem, stem_x, value, flag, flag_anchor) = if top-4 > 4-bottom
+								{ (StemDownNW, top, bottom-5, x, chord.first(), flag::down, StemDownSW) } else
+								{ (StemUpSE, bottom, top+5, x-stem_thickness, chord.last(), flag::up, StemUpNW) };
+							let head_anchors = &glyphs_with_anchors.iter().find(|(id,_)| id == &note_head::black).unwrap().1;
+							let xy{x, y: dy} = xy{x: stem_x, y: 0} + head_anchors.iter().find(|(id,_)| id == &anchor).unwrap().1;
 							if anchor == StemDownNW { // Left align
-								measure.fill.push(Rect{top_left: xy{x, y: measure.y(staff.index, top)+dy}, bottom_right: xy{x: x+stem_thickness, y: measure.y(staff.index, bottom)+dy}});
+								measure.fill.push(Rect{top_left: xy{x, y: measure.y(staff.index, base)+dy}, bottom_right: xy{x: x+stem_thickness, y: measure.y(staff.index, stem)}});
 							} else { // Right align
-								measure.fill.push(Rect{top_left: xy{x: x-stem_thickness, y: measure.y(staff.index, top)+dy}, bottom_right: xy{x, y: measure.y(staff.index, bottom)+dy}});
+								measure.fill.push(Rect{top_left: xy{x, y: measure.y(staff.index, stem)}, bottom_right: xy{x: x+stem_thickness, y: measure.y(staff.index, base)+dy}});
+							}
+
+							// Flag
+							let value = &value.unwrap().r#type.as_ref().unwrap().value;
+							if value <= &NoteTypeValue::Eighth {
+								let anchors = &glyphs_with_anchors.iter().find(|(id,_)| id == &flag).unwrap().1;
+								let xy{x, y: dy} = xy{x, y: 0} + anchors.iter().find(|(id,_)| id == &flag_anchor).unwrap().1;
+								measure.push(x, staff.index, stem, dy, flag::from(flag, NoteTypeValue::Eighth as u32 - *value as u32));
 							}
 						}
-						//if(sign.note.value>=Eighth) glyph(vec2(x, yStem), (int(sign.note.value)-Eighth)*2 + (stemUp ? SMuFL::Flag::Above : SMuFL::Flag::Below), opacity, 7);
 						// Heads
 						for note in chord { if let music_xml::Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(pitch), ..} = note {
 							measure.pitch(x, staves.index(staff), pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
@@ -228,9 +252,8 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 						}
 						x = measure.x();
 						if let Some(Time{beats, beat_type}) = time {
-							fn time_signature_digit(digit: char) -> char { use std::convert::TryInto; u32::try_into(u32::from(time_signature)+digit.to_digit(10).unwrap()).unwrap() }
 							let texts : [String; 2] = framework::array::Iterator::collect(
-								[beats, beat_type].iter().map(|number| number.to_string().chars().map(time_signature_digit).collect::<String>())
+								[beats, beat_type].iter().map(|number| number.to_string().chars().map(time_signature::from).collect::<String>())
 							);
 							let texts : [Text; 2] = framework::array::Iterator::collect(
 								texts.as_ref().iter().map(|text| Text::new(&font, text, &*default_style))
@@ -241,7 +264,7 @@ fn layout(music: &MusicXML, size: size2) -> Graphic<'static> {
 								let x = x + ((width-text.size().x)/2) as i32;
 								for text::Layout{x: dx, glyph: (_, id), ..} in text.font.glyphs(text.text.char_indices()).layout() {
 									for index in 0..staves.len() {
-										measure.push(x + dx, index, step, id);
+										measure.push_id(x + dx, index, step, 0, id);
 									}
 								}
 							}
