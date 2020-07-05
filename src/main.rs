@@ -44,8 +44,9 @@ fn layout(music: &MusicXML, width: i32) -> Graphic<'static> {
 	let engraving_defaults = EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40};
 	use Anchor::*;
 	let glyphs_with_anchors = [(note_head::black, [
-		(StemDownNW, xy{x: 0, y:-42}),
-		(StemUpSE, xy{x: font.glyph_bounding_box(font.glyph_index(note_head::black).unwrap()).unwrap().x_max as i32, y:42})])];
+		(StemDownNW, xy{x: 0, y: 42}),
+		(StemUpSE, xy{x: font.glyph_bounding_box(font.glyph_index(note_head::black).unwrap()).unwrap().x_max as i32-1, y: -42})
+	])];
 
 	let sheet = {
 		let staff_height = font.units_per_em().unwrap() as u32;
