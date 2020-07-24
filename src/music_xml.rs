@@ -1,4 +1,4 @@
-/// MusicXML
+// MusicXML
 use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]#[serde(rename="work",rename_all="kebab-case")]
@@ -321,15 +321,15 @@ pub struct Tie {
 	//time-only: Option
 }
 
-#[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
-pub enum StemValue {
+#[derive(Debug, Deserialize, Clone, Copy)]#[serde(rename_all="kebab-case")]
+pub enum StemDirection {
 	Down, Up, Double, None
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="stem",rename_all="kebab-case")]
 pub struct Stem {
 	#[serde(rename="$")]
-	r#value: StemValue,
+	r#value: StemDirection,
 	//y-position
 	//color
 }
