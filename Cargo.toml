@@ -10,13 +10,10 @@ fehler = ''
 lazy_static = ''
 serde = ''
 serde_derive = '' # 2s
-#serde-derive = { package='wa-serde-derive', version='' } # 20s :/
 roxmltree = ''
 itertools = ''
 derive-more = { package='derive_more', version='' }
 ttf-parser = ''
-
-[dependencies.framework]
-path = 'framework'
-#git = "https://github.com/Matthias-Fauconneau/framework"
-features = ['fehler','anyhow','graphic','text','window','font-file','trace','signal-hook','timeout']
+core = { version='', path='../core' }
+xy = { version='', path='../xy' }
+ui = { version='', path='../ui', features=['graphic','text'] }

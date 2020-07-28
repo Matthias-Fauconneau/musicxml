@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, framework::{MinMax, Bounds}, crate::{music_xml::{self, Clef, ClefSign, Pitch, StemDirection, Note}}};
+use {derive_more::{Deref, DerefMut}, core::{MinMax, Bounds}, crate::{music_xml::{self, Clef, ClefSign, Pitch, StemDirection, Note}}};
 
 #[derive(Default)] pub struct Staff { pub clef: Option<Clef>, pub octave: i8 }
 

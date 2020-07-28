@@ -1,36 +1,17 @@
-pub trait OptionExt<T> { fn try_map<E, U, F:FnOnce(T)->Result<U, E>>(self, f: F) -> Result<Option<U>, E>; }
-impl<T> OptionExt<T> for Option<T> {
-	fn try_map<E, U, F:FnOnce(T) ->Result<U, E>>(self, f: F) -> Result<Option<U>, E> { self.map(f).transpose() }
-}
-
-trait VecExt {
-	type Item;
-	fn take_first<P:Fn(&Self::Item)->bool>(&mut self, predicate: P) -> Option<Self::Item>;
-}
-impl<T> VecExt for Vec<T> {
-	type Item = T;
-	fn take_first<P:Fn(&Self::Item)->bool>(&mut self, predicate: P) -> Option<Self::Item> {
-		Some(self.remove(self.iter().position(predicate)?))
-	}
-}
-
 #[macro_use] mod serde;
 
-#[derive(Debug)] pub struct Error(anyhow::Error);
-impl std::fmt::Display for Error { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) } }
+#[derive(Debug,derive_more::Display,derive_more::From)] struct Error(core::Error);
+impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static) -> Error { Error(core::Error::msg(msg)) } }
 impl std::error::Error for Error {}
-impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(anyhow::Error::msg(msg.to_string())) } }
-impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { ::serde::de::Error::custom(t) } }
-impl From<anyhow::Error> for Error { fn from(t: anyhow::Error) -> Self { Error(t) } }
-impl From<std::num::ParseIntError> for Error { fn from(t: std::num::ParseIntError) -> Self { ::serde::de::Error::custom(t) } }
-impl From<std::num::ParseFloatError> for Error { fn from(t: std::num::ParseFloatError) -> Self { ::serde::de::Error::custom(t) } }
-impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolError) -> Self { ::serde::de::Error::custom(t) } }
-macro_rules! bail { ($($arg:tt)*) => { throw!(<Error as ::serde::de::Error>::custom(format!($($arg)*))) } }
-macro_rules! ensure { ($cond:expr, $($arg:tt)*) => { if !$cond { bail!($($arg)*) } } }
+impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(core::Error::msg(msg.to_string())) } }
+impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { Error(core::Error::from(t)) } }
+impl From<std::num::ParseIntError> for Error { fn from(t: std::num::ParseIntError) -> Self { Error(core::Error::from(t)) } }
+impl From<std::num::ParseFloatError> for Error { fn from(t: std::num::ParseFloatError) -> Self { Error(core::Error::from(t)) } }
+impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolError) -> Self { Error(core::Error::from(t)) } }
 
-use {fehler::*, ::serde::de::{self, Visitor, Deserializer}};
+use {core::{throws,bail,ensure}, ::serde::de::{self, Visitor, Deserializer}};
 
-pub(super) struct DefaultDeserializer;
+struct DefaultDeserializer;
 
 impl<'de> de::Deserializer<'de> for DefaultDeserializer {
 	type Error = Error;
@@ -47,15 +28,7 @@ impl<'de> de::Deserializer<'de> for DefaultDeserializer {
 
 ///
 
-#[throws] fn from_yes_no(s: &str) -> bool {
-	match s {
-		"yes" => true,
-		"no" => false,
-		_ => bail!("provided string was not `yes` or `no`, got {}", s),
-	}
-}
-
-use anyhow::Context;
+#[throws] fn from_yes_no(s: &str) -> bool { match s { "yes" => true, "no" => false, _ => bail!("provided string was not `yes` or `no`") } }
 
 struct TextDeserializer<'de>(&'de str);
 impl<'de> Deserializer<'de> for TextDeserializer<'de> {
@@ -66,7 +39,7 @@ impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 	#[throws] fn deserialize_string<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_string::<Error>(self.0.to_owned())? }
 	#[throws] fn deserialize_u8<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u8::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_u16<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u16::<Error>(self.0.parse()?)? }
-	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u32::<Error>(self.0.parse().with_context(|| self.0.to_string())?)? }
+	#[throws] fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_u32::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_i8<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i8::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_i16<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i16::<Error>(self.0.parse()?)? }
 	#[throws] fn deserialize_i32<V: Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_i32::<Error>(self.0.parse()?)? }
@@ -80,8 +53,7 @@ impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 		char bytes byte_buf identifier u64 u128 i64 i128 f64 unit unit_struct newtype_struct tuple tuple_struct struct seq map ignored_any}
 }
 
-#[derive(Clone)]
-pub struct ElementDeserializer<'de> {
+#[derive(Clone)] struct ElementDeserializer<'de> {
 	name: &'de str,
 	attributes: std::iter::Peekable<std::slice::Iter<'de, roxmltree::Attribute<'de>>>,
 	children: std::iter::Peekable<roxmltree::Children<'de, 'de>>,
@@ -122,13 +94,14 @@ impl<'de> ElementDeserializer<'de> {
 		Self{name: node.tag_name().name(), attributes: node.attributes().iter().peekable(), children: node.children().peekable()}
 	}
 
-	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
+	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
 		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
 		let cell = std::cell::RefCell::new(self);
 		//println!("deserialize struct '{}' {:?} '{:?}'", name, fields, cell.borrow());
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
 			//println!("map iter '{}' {:?} {:?}", name, fields, node);
+			use core::VecExt;
 			if let Some(a) = node.attributes.peek() {
 				if let Some((field,_)) = fields.take_first(|(_,(name,_))| name == &a.name()) {
 					let a = node.attributes.next().unwrap();
@@ -217,12 +190,12 @@ impl<'de> ElementDeserializer<'de> {
 					}
 				}
 			}
-		}))).map_err(|e| { println!("{}", e); e }).with_context(|| format!("{}:{:?} {:?}", name, fields, cell.borrow().name))?
+		})))? //.map_err(|e| { println!("{}", e); e })
 	}
 
 	#[throws] fn simple_content(&mut self) -> &'de str {
 		if let Some(text) = self.children.next() {
-			ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none(), "Expected simple content, got {:?}", self);
+			ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none());
 			text.text().unwrap()
 		} else {
 			"" // Empty content yields empty string
@@ -311,10 +284,10 @@ impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
 	::serde::forward_to_deserialize_any!{char bytes byte_buf identifier bool u64 u128 i64 i128 f64 unit_struct newtype_struct tuple tuple_struct ignored_any}
 }
 
-#[throws(anyhow::Error)] pub fn from_node<'input: 'de, 't: 'de, 'de, T: ::serde::Deserialize<'de>>(node: roxmltree::Node<'t, 'input>) -> T {
+#[throws(core::Error)] pub fn from_node<'input: 'de, 't: 'de, 'de, T: ::serde::Deserialize<'de>>(node: roxmltree::Node<'t, 'input>) -> T {
 	T::deserialize(ElementDeserializer::new(node))?
 }
-#[throws(anyhow::Error)] pub fn from_document<'input: 'de, 'de, T: ::serde::Deserialize<'de>>(document: &'de roxmltree::Document<'input>) -> T {
+#[throws(core::Error)] pub fn from_document<'input: 'de, 'de, T: ::serde::Deserialize<'de>>(document: &'de roxmltree::Document<'input>) -> T {
 	from_node(document.root())?
 }
-#[throws(anyhow::Error)] pub fn parse(bytes: &[u8]) -> roxmltree::Document { roxmltree::Document::parse(std::str::from_utf8(bytes)?)? }
+#[throws(core::Error)] pub fn parse(bytes: &[u8]) -> roxmltree::Document { roxmltree::Document::parse(std::str::from_utf8(bytes)?)? }

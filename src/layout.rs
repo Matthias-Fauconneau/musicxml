@@ -1,4 +1,4 @@
-use {framework::{num::Ratio, vector::{size, xy}, graphic::{Rect, Graphic}}, crate::music_xml::{self, MusicXML}};
+use {::xy::{size, xy}, ui::graphic::{Ratio, Rect, Graphic}, crate::music_xml::{self, MusicXML}};
 pub fn layout(music: &MusicXML, size: size) -> Graphic<'static> {
 	use crate::{sheet::Sheet, staff::Staff, music::*, measure::{MeasureLayoutContext,MusicLayoutContext}};
 	let sheet = Sheet::default();
@@ -37,7 +37,8 @@ pub fn layout(music: &MusicXML, size: size) -> Graphic<'static> {
 			graphic.parallelograms.extend(measure.graphic.parallelograms.drain(..).map(|mut x| { x.translate(system.signed()); x }));
 			graphic.glyphs.extend(measure.graphic.glyphs.drain(..).map(|mut x| { x.translate(system.signed()); x }));
 			if system.x > 0 {
-				graphic.rects.push(Rect::vertical(
+				pub fn vertical(x: i32, dx: u8, y0: i32, y1: i32) -> Rect { Rect{ min: xy{ x: x-(dx/2) as i32, y: y0 }, max: xy{ x: x+(dx/2) as i32, y: y1 } } }
+				graphic.rects.push(vertical(
 					(system.x - (space / 2)) as i32,
 					sheet.engraving_defaults.thin_barline_thickness,
 					system.y as i32+sheet.y(staves.len()-1, 8),

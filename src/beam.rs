@@ -1,7 +1,7 @@
 use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
 impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
 	use crate::{music_xml::{NoteType, NoteData, NoteTypeValue, StemDirection}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
-	use framework::{iter::Single, Bounds,MinMax, vector::xy, graphic::{Rect, Parallelogram}};
+	use {core::{iter::Single,vector::{Bounds,MinMax}}, ::xy::xy, ui::graphic::{Rect, Parallelogram}};
 	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).bounds().unwrap();
 	let direction = if top-4 > 4-bottom { StemDirection::Down } else { StemDirection::Up };
 	let stem_anchor = if let StemDirection::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
@@ -39,11 +39,9 @@ impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &
 		let staff = chord.staff();
 		let stem_step = chord.stem_step(staves, direction);
 		if let StemDirection::Down = direction { // Bottom Left
-			self.measure.graphic.rects.push(Rect{top_left: xy{x, y: self.y(staff, top)+stem_anchor.y},
-											bottom_right: xy{x: x+stem_thickness, y: self.y(staff, stem_step)}});
+			self.measure.graphic.rects.push(Rect{min: xy{x, y: self.y(staff, top)+stem_anchor.y}, max: xy{x: x+stem_thickness, y: self.y(staff, stem_step)}});
 		} else { // Top Right
-			self.measure.graphic.rects.push(Rect{top_left: xy{x: x-stem_thickness, y: self.y(staff, stem_step)},
-											bottom_right: xy{x, y: self.y(staff, bottom)+stem_anchor.y}});
+			self.measure.graphic.rects.push(Rect{min: xy{x: x-stem_thickness, y: self.y(staff, stem_step)}, max: xy{x, y: self.y(staff, bottom)+stem_anchor.y}});
 		}
 	}
 

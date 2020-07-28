@@ -29,7 +29,7 @@
     }
 }
 
-use framework::{xy, int2};
+use ::xy::{xy, int2};
 
 pub trait SMuFont {
     fn engraving_defaults() -> SMuFL::EngravingDefaults;
@@ -39,7 +39,7 @@ pub trait SMuFont {
 mod bravura {
     use super::{SMuFont, SMuFL, int2, xy};
 
-	impl SMuFont for ttf_parser::Font<'_> {
+	impl SMuFont for ttf_parser::Face<'_> {
 		fn engraving_defaults() -> SMuFL::EngravingDefaults {
 			SMuFL::EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40, beam_thickness: 250}
 		}

@@ -1,5 +1,4 @@
-use {fehler::*, serde::de::{self, Visitor}};
-use super::{Error, ElementDeserializer};
+use {core::{throws,ensure}, serde::de::{self, Visitor}, super::{Error,ElementDeserializer}};
 
 pub(super) struct ContentDeserializer<'t, 'de>(pub std::cell::RefMut<'t, &'t mut ElementDeserializer<'de>>);
 
@@ -24,12 +23,10 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 		self.0.deserialize_struct(name, fields, visitor)?
 	}
 
-	#[throws] fn deserialize_enum<V: Visitor<'de>>(mut self, name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
-		//println!("enum [content {}] '{}' {:?}", self.0.name, name, variants);
-		let node = self.0.children.by_ref().filter(|child| child.is_element()).next().ok_or_else(|| anyhow::Error::msg("Expected variant"))?;
+	#[throws] fn deserialize_enum<V: Visitor<'de>>(mut self, _name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
+		let node = self.0.children.by_ref().filter(|child| child.is_element()).next().ok_or_else(|| Error::msg("Expected variant"))?;
 		let tag = node.tag_name().name();
-		//println!("variant [content {}] '{}' {:?} {:?}", self.0.name, name, tag, variants);
-		ensure!(variants.contains(&tag), "enum [content] {}: no '{}' in {:?}", name, tag, variants);
+		ensure!(variants.contains(&tag));
 		visitor.visit_enum(serde::de::value::MapAccessDeserializer::new(serde::de::value::MapDeserializer::new(std::iter::once((tag, ElementDeserializer::new(node))))))?
 	}
 
