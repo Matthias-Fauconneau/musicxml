@@ -1,3 +1,4 @@
+#![feature(let_else)]
 mod xml;
 mod music_xml;
 mod music;

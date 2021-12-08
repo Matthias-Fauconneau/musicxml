@@ -35,7 +35,7 @@ pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> imp
 		let start = *t;
 		match music_data {
 			MusicData::Backup(Backup{duration}) => { *next_t = *t - duration; },
-			MusicData::Note(Note{duration, ..}) => { *next_t = *t + duration; },
+			MusicData::Note(Note{duration: Some(duration), ..}) => { *next_t = *t + duration; },
 			_ => {},
 		}
 		Some((start, music_data))

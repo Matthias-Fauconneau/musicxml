@@ -26,7 +26,7 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(mut self, _name: &'static str, variants: &'static [&'static str], visitor: V) -> V::Value {
 		let node = self.0.children.by_ref().filter(|child| child.is_element()).next().ok_or_else(|| Error::msg("Expected variant"))?;
 		let tag = node.tag_name().name();
-		assert!(variants.contains(&tag));
+		assert!(variants.contains(&tag), "no {tag} in {variants:?}");
 		visitor.visit_enum(serde::de::value::MapAccessDeserializer::new(serde::de::value::MapDeserializer::new(std::iter::once((tag, ElementDeserializer::new(node))))))?
 	}
 

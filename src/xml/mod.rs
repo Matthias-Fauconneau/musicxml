@@ -66,7 +66,7 @@ impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 
 #[derive(Clone)] struct ElementDeserializer<'de> {
 	name: &'de str,
-	attributes: std::iter::Peekable<std::slice::Iter<'de, roxmltree::Attribute<'de>>>,
+	attributes: &'de [roxmltree::Attribute<'de>], //std::iter::Peekable<std::slice::Iter<'de, roxmltree::Attribute<'de>>>,
 	children: std::iter::Peekable<roxmltree::Children<'de, 'de>>,
 }
 
@@ -76,7 +76,7 @@ mod content; use content::ContentDeserializer;
 impl std::fmt::Debug for ElementDeserializer<'_> {
     #[throws(std::fmt::Error)] fn fmt(&self, f: &mut std::fmt::Formatter) {
         use itertools::Itertools;
-        write!(f, "{} [{:?}] {{{:?}}}", self.name, self.attributes.clone().format(" "), self.children.clone().format(" "))?
+        write!(f, "{} [{:?}] {{{:?}}}", self.name, self.attributes/*.clone().format(" ")*/, self.children.clone().format(" "))?
     }
 }
 
@@ -102,21 +102,23 @@ impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for Value<'t, 'de> { typ
 impl<'de> ElementDeserializer<'de> {
     fn new(node: roxmltree::Node<'de, 'de>) -> Self {
 		assert!(node.is_element() || node.is_root(), "{:?}", node);
-		Self{name: node.tag_name().name(), attributes: node.attributes().iter().peekable(), children: node.children().peekable()}
+		Self{name: node.tag_name().name(), attributes: node.attributes()/*.iter().peekable()*/, children: node.children().peekable()}
 	}
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
+		let mut attributes = self.attributes.iter();
 		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
 		let cell = std::cell::RefCell::new(self);
-		//println!("deserialize struct '{}' {:?} '{:?}'", name, fields, cell.borrow());
+		println!("deserialize struct '{_name}' {fields:?} '{:?}'", cell.borrow());
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
 			//println!("map iter '{}' {:?} {:?}", name, fields, node);
-			if let Some(a) = node.attributes.peek() {
+			//if let Some(a) = node.attributes.peek() {
+			while let Some(a) = attributes.next() {
 				if let Some((field,_)) = fields.take_first(|(_,(name,_))| name == &a.name()) {
-					let a = node.attributes.next().unwrap();
+					//let a = node.attributes.next().unwrap();
 					//println!("attribute {:?}={}", field, a.value());
-					Some((field, Value::Text(TextDeserializer(a.value()))))
+					return Some((field, Value::Text(TextDeserializer(a.value()))));
 				} //else if let Some((field,_)) = fields.iter().find(|(field,_)| field.is_empty() || field.parse() == Ok(index) || field==&"?" ) {
 				else if let Some(index) = fields.iter().position(|(field,(_,def))| field.is_empty() /*|| field.parse() == Ok(index)*/ || def==&"?" ) {
 					let (field,(_,_def)) = fields[index];
@@ -129,83 +131,80 @@ impl<'de> ElementDeserializer<'de> {
 					}*/
 					//index += 1;
 					//("", Value::Text(TextDeserializer(a.value()))) // Flatten
-					Some((field, Value::Content(ContentDeserializer(node)))) // Flatten
-				} else {
-					//println!("skip attributes {}", a.name());
+					return Some((field, Value::Content(ContentDeserializer(node)))); // Flatten
+				}/*else {
+					println!("Unexpected attribute {a:?} in {_name}, try parent");
 					None
-				}
-			} else {
-				loop {
-					if let Some(child) = node.children.peek() {
-						let name = child.tag_name().name();
-						if !name.is_empty() /*&&*/{
-							if let Some((field,(tag,def))) = fields.take_first(|(_,(id,_))| id == &name) {
-								if !def.is_empty() {
-									//println!("external sequence '{}' {:?}", field, child);
-									break Some((field, Value::Seq(SeqDeserializer{node, tag}))); // External sequence
-								} else {
-									//println!("field '{}' {:?}", field, child);
-									use roxmltree::NodeType::*; match child.node_type() {
-										Text => break Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))),
-										Element => break Some((field, Value::Element(ElementDeserializer::new(node.children.next().unwrap())))),
-										_ => todo!(),
-									}
-								}
-							}
-						}/*else*/ if child.is_element() /*&&*/{ if let Some(index) = fields.iter().position(|(_,(id,_))| id.is_empty() /*|| id.parse()==Ok(index)*/) {
-							let (field,(_,_def)) = fields[index];
-							//println!("no field '{}' in {:?}, deserializing child to '{}'.'{}'", name, fields, node.name, field);
-							/*if !(def.starts_with("+") || def.starts_with("*") || def.starts_with("{"))*/ {
-								fields.remove(index);
-								//println!("remove field with single occurence from possible choices {:?}", field);
-							} /*else {
-								println!("keep field with multiple occurence in possible choices {:?}", field);
-							}*/
-
-							//index += 1;
-							break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
-						} } /*else*/ if child.is_text() { if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"$") {
-							//println!("deserializing text child to {}", field);
-							//break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
-							//if !child.text().unwrap().trim().is_empty() { println!("deserializing text {:?} to {}", child, field); }
-							break Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
-						} } /*else*/ {
-							// FIXME: only if no other (parent) deserializer might parse a simple content text
-							//println!("fields {:?} {:?}", fields, child);
-							if child.is_text() && child.text().unwrap().trim().is_empty() && (/*fields.is_empty() ||*/ fields.iter().any(|(_,(_,def))| def!=&"@")) {
-								//println!("skip whitespace {:?} {:?}", child, fields);
-								node.children.next();
-							} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
-								//println!("default empty seq {} before continue content {:?}", field, child);
-								break Some((field, Value::EmptySeq(EmptySeqDeserializer)));
-							} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
-								//println!("default value 1 {}", field);
-								break Some((field, Value::Default(DefaultDeserializer)));
-							} else {
-								//println!("break None; // Continue content");
-								break None; // Continue content
-							}
-						}
-					} else {
-						if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
-							//println!("empty seq {}", field);
-							break Some((field, Value::EmptySeq(EmptySeqDeserializer)));
-						} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
-							//println!("default value 2 {}", field);
-							break Some((field, Value::Default(DefaultDeserializer)));
+				}*/
+			}// else {
+			while let Some(child) = node.children.peek() {
+				let name = child.tag_name().name();
+				if !name.is_empty() /*&&*/{
+					if let Some((field,(tag,def))) = fields.take_first(|(_,(id,_))| id == &name) {
+						if !def.is_empty() {
+							//println!("external sequence '{}' {:?}", field, child);
+							return Some((field, Value::Seq(SeqDeserializer{node, tag}))); // External sequence
 						} else {
-							//println!("done {} {:?}", name, node);
-							break None;
+							//println!("field '{}' {:?}", field, child);
+							use roxmltree::NodeType::*; match child.node_type() {
+								Text => return Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))),
+								Element => return Some((field, Value::Element(ElementDeserializer::new(node.children.next().unwrap())))),
+								_ => todo!(),
+							}
 						}
 					}
+				}/*else*/ if child.is_element() /*&&*/{ if let Some(index) = fields.iter().position(|(_,(id,_))| id.is_empty() /*|| id.parse()==Ok(index)*/) {
+					let (field,(_,_def)) = fields[index];
+					//println!("no field '{}' in {:?}, deserializing child to '{}'.'{}'", name, fields, node.name, field);
+					/*if !(def.starts_with("+") || def.starts_with("*") || def.starts_with("{"))*/ {
+						fields.remove(index);
+						//println!("remove field with single occurence from possible choices {:?}", field);
+					} /*else {
+						println!("keep field with multiple occurence in possible choices {:?}", field);
+					}*/
+
+					//index += 1;
+					eprintln!("External enum tag {fields:?} {index} '{field}' {node:?}");
+					return Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
+				} } /*else*/ if child.is_text() { if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"$") {
+					//println!("deserializing text child to {}", field);
+					//break Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
+					//if !child.text().unwrap().trim().is_empty() { println!("deserializing text {:?} to {}", child, field); }
+					return Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
+				} } /*else*/ {
+					// FIXME: only if no other (parent) deserializer might parse a simple content text
+					//println!("fields {:?} {:?}", fields, child);
+					if child.is_comment() || (child.is_text() && child.text().unwrap().trim().is_empty() /*&& (/*fields.is_empty() ||*/ fields.iter().any(|(_,(_,def))| def!=&"@"))*/) {
+						println!("skip {child:?}");
+						node.children.next();
+					} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
+						//println!("default empty seq {} before continue content {:?}", field, child);
+						return Some((field, Value::EmptySeq(EmptySeqDeserializer)));
+					} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
+						//println!("default value 1 {}", field);
+						return Some((field, Value::Default(DefaultDeserializer)));
+					} else {
+						println!("Unexpected element {child:?} in {_name}, try parent");
+						return None;
+					}
 				}
+			} 
+			if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
+				//println!("empty seq {}", field);
+				Some((field, Value::EmptySeq(EmptySeqDeserializer)))
+			} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
+				//println!("default value 2 {}", field);
+				Some((field, Value::Default(DefaultDeserializer)))
+			} else {
+				println!("done {_name} {node:?}");
+				None
 			}
 		})))? //.map_err(|e| { println!("{}", e); e })
 	}
 
 	#[throws] fn simple_content(&mut self) -> &'de str {
 		if let Some(text) = self.children.next() {
-			assert!(text.is_text() && self.children.peek().is_none() && self.attributes.peek().is_none(), "{text:?} {self:?}");
+			assert!(text.is_text() && self.children.peek().is_none() && self.attributes.is_empty(), "Expected simple content got {self:?} {text:?}");
 			text.text().unwrap()
 		} else {
 			"" // Empty content yields empty string
@@ -216,7 +215,7 @@ impl<'de> ElementDeserializer<'de> {
 impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 	type Error = Error;
 	#[throws] fn deserialize_unit<V:Visitor<'de>>(self, visitor: V) -> V::Value {
-		assert!(self.attributes.next().is_none() && self.children.next().is_none());
+		assert!(self.attributes.is_empty() && self.children.next().is_none());
 		visitor.visit_unit::<Error>()?
 	}
 	#[throws] fn deserialize_str<V: Visitor<'de>>(self, visitor: V) -> V::Value { TextDeserializer(self.simple_content()?).deserialize_str(visitor)? }
@@ -247,8 +246,10 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
 		let value = self.deserialize_struct(name, fields, visitor)?;//.with_context(|| format!("{}:{:?}", name, fields))?;
+		use itertools::Itertools; 
+		//assert!(self.attributes.peek().is_none(), "Remaining attributes '{:?}' in {:?}", self.attributes.clone().format(" "), self);
 		while self.children.peek().filter(|child| child.is_text() && child.text().unwrap().trim().is_empty()).is_some() { self.children.next(); }
-		use itertools::Itertools; assert!(self.attributes.peek().is_none() && self.children.peek().is_none(), "Remaining {:?} in {:?}", self.children.clone().format(" "), self);
+		assert!(self.children.peek().is_none(), "Remaining elements '{:?}' in {name}", self.children.clone().format(" "));
 		value
 	}
 
