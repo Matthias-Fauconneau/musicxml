@@ -8,9 +8,9 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	#[throws] fn deserialize_option<V:Visitor<'de>>(self, visitor: V) -> V::Value { visitor.visit_some(self)? }
 
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
-		//println!("seq [content]");
+		//eprintln!("seq [content]");
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::new(self.0.children.by_ref().filter(roxmltree::Node::is_element).map(|e| {
-			//println!("item [content]");
+			//eprintln!("item [content]");
 			ElementDeserializer::new(e) // Leave content context
 		})))?
 	}
@@ -31,7 +31,7 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	}
 
 	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		//println!("content 'any {}'", &visitor as &dyn de::Expected);
+		//eprintln!("content 'any {}'", &visitor as &dyn de::Expected);
 		self.deserialize_map(visitor)?
 	}
 	serde::forward_to_deserialize_any!{
