@@ -52,7 +52,7 @@ macro_rules! delegatable_trait {
 				fn deserialize_identifier<V:Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error>;
 				fn deserialize_ignored_any<V:Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error>;
 			}
-			fn is_human_readable(&self) -> bool { true /*dispatch!(self, is_human_readable())*/ }
+			fn is_human_readable(&self) -> bool { true }
 		}
 	}
 }

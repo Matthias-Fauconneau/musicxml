@@ -5,7 +5,6 @@ pub(super) struct EmptySeqDeserializer;
 impl<'de> de::Deserializer<'de> for EmptySeqDeserializer {
 	type Error = Error;
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> V::Value {
-		//eprintln!("empty seq [seq]");
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::<_,Error>::new(std::iter::empty::<EmptySeqDeserializer>()))?
 	}
 
@@ -23,14 +22,11 @@ impl<'t, 'de> de::Deserializer<'de> for SeqDeserializer<'t, 'de> {
 	#[throws] fn deserialize_seq<V: Visitor<'de>>(mut self, visitor: V) -> V::Value {
 		visitor.visit_seq(::serde::de::value::SeqDeserializer::new( std::iter::from_fn(||
 			loop {
-				//eprintln!("seq [seq] {:?} {}", self.node, self.tag);
 				if let Some(child) = self.node.children.peek() {
 					if child.is_element() {
 						if child.tag_name().name() == self.tag {
-							//eprintln!("item [seq] {}", self.tag);
 							break Some(ElementDeserializer::new(self.node.children.next().unwrap())) // Leave content context
 						} else {
-							//eprintln!("{:?} does not match {}", child, self.tag);
 							break None;
 						}
 					} else {
