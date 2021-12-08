@@ -1,15 +1,26 @@
+pub trait VecExt {
+	type Item;
+	fn take_first<P:Fn(&Self::Item)->bool>(&mut self, predicate: P) -> Option<Self::Item>;
+}
+impl<T> VecExt for Vec<T> {
+	type Item = T;
+	fn take_first<P:Fn(&Self::Item)->bool>(&mut self, predicate: P) -> Option<Self::Item> {
+		Some(self.remove(self.iter().position(predicate)?))
+	}
+}
+
 #[macro_use] mod serde;
 
-#[derive(Debug,derive_more::Display,derive_more::From)] struct Error(core::Error);
-impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static) -> Error { Error(core::Error::msg(msg)) } }
+#[derive(Debug,derive_more::Display,derive_more::From)] struct Error(anyhow::Error);
+impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static+Send+Sync) -> Error { Error(anyhow::Error::msg(msg)) } }
 impl std::error::Error for Error {}
-impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(core::Error::msg(msg.to_string())) } }
-impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { Error(core::Error::from(t)) } }
-impl From<std::num::ParseIntError> for Error { fn from(t: std::num::ParseIntError) -> Self { Error(core::Error::from(t)) } }
-impl From<std::num::ParseFloatError> for Error { fn from(t: std::num::ParseFloatError) -> Self { Error(core::Error::from(t)) } }
-impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolError) -> Self { Error(core::Error::from(t)) } }
+impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(anyhow::Error::msg(msg.to_string())) } }
+impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { Error(anyhow::Error::from(t)) } }
+impl From<std::num::ParseIntError> for Error { fn from(t: std::num::ParseIntError) -> Self { Error(anyhow::Error::from(t)) } }
+impl From<std::num::ParseFloatError> for Error { fn from(t: std::num::ParseFloatError) -> Self { Error(anyhow::Error::from(t)) } }
+impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolError) -> Self { Error(anyhow::Error::from(t)) } }
 
-use {core::{throws,bail,ensure}, ::serde::de::{self, Visitor, Deserializer}};
+use {fehler::throws, ::serde::de::{self, Visitor, Deserializer}};
 
 struct DefaultDeserializer;
 
@@ -28,7 +39,7 @@ impl<'de> de::Deserializer<'de> for DefaultDeserializer {
 
 ///
 
-#[throws] fn from_yes_no(s: &str) -> bool { match s { "yes" => true, "no" => false, _ => bail!("provided string was not `yes` or `no`") } }
+#[throws] fn from_yes_no(s: &str) -> bool { match s { "yes" => true, "no" => false, _ => panic!("provided string was not `yes` or `no`") } }
 
 struct TextDeserializer<'de>(&'de str);
 impl<'de> Deserializer<'de> for TextDeserializer<'de> {
@@ -101,7 +112,6 @@ impl<'de> ElementDeserializer<'de> {
 		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
 			let mut node = cell.borrow_mut();
 			//println!("map iter '{}' {:?} {:?}", name, fields, node);
-			use core::VecExt;
 			if let Some(a) = node.attributes.peek() {
 				if let Some((field,_)) = fields.take_first(|(_,(name,_))| name == &a.name()) {
 					let a = node.attributes.next().unwrap();
@@ -195,7 +205,7 @@ impl<'de> ElementDeserializer<'de> {
 
 	#[throws] fn simple_content(&mut self) -> &'de str {
 		if let Some(text) = self.children.next() {
-			ensure!(text.is_text() && self.children.next().is_none() && self.attributes.next().is_none());
+			assert!(text.is_text() && self.children.peek().is_none() && self.attributes.peek().is_none(), "{text:?} {self:?}");
 			text.text().unwrap()
 		} else {
 			"" // Empty content yields empty string
@@ -284,10 +294,10 @@ impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
 	::serde::forward_to_deserialize_any!{char bytes byte_buf identifier bool u64 u128 i64 i128 f64 unit_struct newtype_struct tuple tuple_struct ignored_any}
 }
 
-#[throws(core::Error)] pub fn from_node<'input: 'de, 't: 'de, 'de, T: ::serde::Deserialize<'de>>(node: roxmltree::Node<'t, 'input>) -> T {
+#[throws(anyhow::Error)] pub fn from_node<'input: 'de, 't: 'de, 'de, T: ::serde::Deserialize<'de>>(node: roxmltree::Node<'t, 'input>) -> T {
 	T::deserialize(ElementDeserializer::new(node))?
 }
-#[throws(core::Error)] pub fn from_document<'input: 'de, 'de, T: ::serde::Deserialize<'de>>(document: &'de roxmltree::Document<'input>) -> T {
+#[throws(anyhow::Error)] pub fn from_document<'input: 'de, 'de, T: ::serde::Deserialize<'de>>(document: &'de roxmltree::Document<'input>) -> T {
 	from_node(document.root())?
 }
-#[throws(core::Error)] pub fn parse(bytes: &[u8]) -> roxmltree::Document { roxmltree::Document::parse(std::str::from_utf8(bytes)?)? }
+#[throws(anyhow::Error)] pub fn parse(bytes: &[u8]) -> roxmltree::Document { roxmltree::Document::parse(std::str::from_utf8(bytes)?)? }

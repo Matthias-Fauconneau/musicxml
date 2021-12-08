@@ -16,7 +16,7 @@
     pub mod flag {
 	    pub const up : char = '\u{E240}';
 	    pub const down : char = '\u{E241}';
-	    pub fn from(flag: char, value: u32) -> char { use std::convert::TryInto; u32::try_into(u32::from(flag)+value*2).unwrap() }
+	    pub fn from(flag: char, value: u32) -> char { u32::try_into(u32::from(flag)+value*2).unwrap() }
     }
     pub mod accidental {
 	    pub const flat : char = '\u{E260}';
@@ -25,7 +25,7 @@
     }
     pub mod time_signature {
 	    pub const zero : char = '\u{E080}';
-	    pub fn from(digit: char) -> char { use std::convert::TryInto; u32::try_into(u32::from(zero)+digit.to_digit(10).unwrap()).unwrap() }
+	    pub fn from(digit: char) -> char { u32::try_into(u32::from(zero)+digit.to_digit(10).unwrap()).unwrap() }
     }
 }
 
@@ -44,7 +44,7 @@ mod bravura {
 			SMuFL::EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40, beam_thickness: 250}
 		}
 		fn anchor(&self, glyph: char, anchor: SMuFL::Anchor) -> int2 {
-			assert_eq!(self.units_per_em(), Some(1000));
+			assert_eq!(self.units_per_em(), 1000);
 			use SMuFL::*;
 			use Anchor::*;
 			let anchors = [

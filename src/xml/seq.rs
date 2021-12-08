@@ -1,4 +1,4 @@
-use {serde::de::{self, Visitor}, super::{Error, ElementDeserializer}, core::throws};
+use {fehler::throws, serde::de::{self, Visitor}, super::{Error, ElementDeserializer}};
 
 pub(super) struct EmptySeqDeserializer;
 

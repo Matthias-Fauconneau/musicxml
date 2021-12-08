@@ -4,7 +4,7 @@ use {derive_more::Deref, ttf_parser::Face, crate::font::{SMuFont, SMuFL::Engravi
 #[derive(Deref)] pub struct Sheet<'t> { #[deref] pub font: &'t Face<'t>, pub engraving_defaults: EngravingDefaults, pub staff_height: u32, pub staff_distance: u32 }
 impl<'t> Sheet<'t> {
 	fn new(font: &'t Face<'t>) -> Self {
-		let staff_height = font.units_per_em().unwrap() as u32;
+		let staff_height = font.units_per_em() as u32;
 		let interval = staff_height / 4;
 		Sheet{
 			font,

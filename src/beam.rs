@@ -1,8 +1,8 @@
 use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
 impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
 	use crate::{music_xml::{NoteType, NoteData, NoteTypeValue, StemDirection}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
-	use {core::{iter::Single,vector::{Bounds,MinMax}}, ::xy::xy, ui::graphic::{Rect, Parallelogram}};
-	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).bounds().unwrap();
+	use {iter::Single, vector::MinMax, ::xy::xy, ui::graphic::{Rect, Parallelogram}};
+	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).reduce(MinMax::minmax).unwrap();
 	let direction = if top-4 > 4-bottom { StemDirection::Down } else { StemDirection::Up };
 	let stem_anchor = if let StemDirection::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
 	let stem_anchor = self.sheet.font.anchor(note_head::black, stem_anchor);

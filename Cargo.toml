@@ -1,19 +1,21 @@
-[package]
-name = 'music'
-version = '0.0.0'
-authors = ['Matthias Fauconneau <matthias.fauconneau@gmail.com>']
-edition = '2018'
+package={name='music', version='0.0.0', edition='2021'}
 
 [dependencies]
-anyhow = ''
-fehler = ''
-lazy_static = ''
-serde = ''
-serde_derive = '' # 2s
-roxmltree = ''
-itertools = ''
-derive-more = { package='derive_more', version='' }
-ttf-parser = ''
-core = { version='', path='../core' }
-xy = { version='', path='../xy' }
-ui = { version='', path='../ui', features=['graphic','text'] }
+anyhow='*'
+fehler='*'
+lazy_static='*'
+serde='*'
+serde_derive='*'
+roxmltree='*'
+itertools='*'
+derive-more={package='derive_more', version='*'}
+ttf-parser='*'
+iter={git='https://github.com/Matthias-Fauconneau/iter'}
+vector={git='https://github.com/Matthias-Fauconneau/vector'}
+xy={git='https://github.com/Matthias-Fauconneau/xy'}
+ui={git='https://github.com/Matthias-Fauconneau/ui', features=['graphic']}
+
+[patch.'https://github.com/Matthias-Fauconneau/ui']
+ui={path='../ui'}
+[patch.'https://github.com/Matthias-Fauconneau/vector']
+vector={path='../vector'}

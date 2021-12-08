@@ -26,18 +26,13 @@ impl MeasureLayoutContext<'_> { pub fn attributes(&mut self, staves: &mut [Staff
 	}
 	self.advance(0);
 	if let Some(Time{beats, beat_type}) = time {
-		let texts : [String; 2] = core::array::Iterator::collect(
-			[beats, beat_type].iter().map(|number| number.to_string().chars().map(time_signature::from).collect::<String>())
-		);
-		use ui::text::{TextView, Buffer, layout, Glyph};
-		let texts : [TextView; 2] = core::array::Iterator::collect(
-			texts.as_ref().iter().map(|text| TextView::new(&self.measure.sheet.font, Buffer::new(text)))
-		);
-		let width = texts.iter().map(|text| text.size().x).max().unwrap();
-		use core::array::IntoIterator;
-		for (text, step) in texts.iter().zip([6,2].into_iter()) {
+		let texts : [String; 2] = [beats, beat_type].map(|number| number.to_string().chars().map(time_signature::from).collect::<String>());
+		use ui::text::{Plain, View, layout, Glyph, unicode_segmentation::UnicodeSegmentation};
+		let mut texts : [_; 2] = texts.map(|text| View::new_with_face(&self.measure.sheet.font, Plain(text)));
+		let width = texts.iter_mut().map(|text| text.size().x).max().unwrap();
+		for (text, step) in texts.iter_mut().zip([6,2]) {
 			let x = self.x as i32 + ((width-text.size().x)/2) as i32;
-			for Glyph{x: dx, id, ..} in layout(text.font, text.buffer.text.char_indices()) {
+			for Glyph{x: dx, id, ..} in layout(&text.font, text.data.0.graphemes(true).enumerate()) {
 				for index in 0..staves.len() {
 					self.push_glyph_id(x + dx, index, step, 0, id);
 				}

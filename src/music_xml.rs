@@ -1,4 +1,4 @@
-// MusicXML
+#![allow(dead_code)]
 use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]#[serde(rename="work",rename_all="kebab-case")]
@@ -6,11 +6,16 @@ pub struct Work {
 	work_title: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="creator",rename_all="kebab-case")]
+pub struct Creator {
+	r#type: String,
+	#[serde(rename="$")] creator: String,
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename="supports",rename_all="kebab-case")]
 pub struct Supports {
 	element: String,
-	//r#type: bool, // watt: "r#type" is not a valid Ident
-	#[serde(rename="type")] r_type: bool,
+	r#type: bool,
 	attribute: Option<String>,
 	value: Option<String>,
 }
@@ -33,7 +38,7 @@ pub struct Encoding {
 #[derive(Debug, Deserialize)]#[serde(rename="identification",rename_all="kebab-case")]
 pub struct Identification {
 	#[serde(rename="creator*")]
-	creator: Vec<String>,
+	creator: Vec<Creator>,
 	#[serde(rename="rights*")]
 	rights: Vec<String>,
 	encoding: Option<Encoding>,
@@ -48,8 +53,7 @@ pub struct Scaling {
 
 #[derive(Debug, Deserialize)]#[serde(rename="page-margins",rename_all="kebab-case")]
 pub struct PageMargins {
-	//r#type: /*odd,even,both*/String,
-	#[serde(rename="type")] r_type: /*odd,even,both*/String,
+	r#type: /*odd,even,both*/String,
 	left_margin: f32,
 	right_margin: f32,
 	top_margin: f32,
@@ -64,27 +68,78 @@ pub struct PageLayout {
 	page_margins: Vec<PageMargins>,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename="type",rename_all="lowercase")]
+enum LineWidthType { Beam, Bracket, Dashes, Enclosure, Ending, Extend, #[serde(rename="heavy barline")] HeavyBarline, Leger, #[serde(rename="light barline")] LightBarline, #[serde(rename="octave shift")] OctaveShift, Pedal, #[serde(rename="slur middle")] SlurMiddle, #[serde(rename="slur tip")] SlurTip, Staff, Stem, #[serde(rename="tie middle")] TieMiddle, #[serde(rename="tie tip")] TieTip, #[serde(rename="tuplet bracket")] TupletBracket, Wedge }
+
+#[derive(Debug, Deserialize)]#[serde(rename="line-width",rename_all="kebab-case")]
+pub struct LineWidth {
+	r#type: LineWidthType,
+	#[serde(rename="$")]
+	tenths: f32
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="type",rename_all="kebab-case")]
+enum NoteSizeType { Cue, Grace, GraceCue, Large }
+
+#[derive(Debug, Deserialize)]#[serde(rename="note-size",rename_all="kebab-case")]
+pub struct NoteSize {
+	r#type: NoteSizeType,
+	#[serde(rename="$")]
+	percents: f32
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="type",rename_all="kebab-case")]
+enum DistanceType { Beam, Hyphen }
+
+#[derive(Debug, Deserialize)]#[serde(rename="distance",rename_all="kebab-case")]
+pub struct Distance {
+	r#type: DistanceType,
+	#[serde(rename="$")]
+	tenths: f32
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="appearance",rename_all="kebab-case")]
+pub struct Appearance {
+	#[serde(rename="line-width*")]
+	line_width: Vec<LineWidth>,
+	#[serde(rename="note-size*")]
+	note_size: Vec<NoteSize>,
+	#[serde(rename="distance*")]
+	distance: Vec<Distance>
+}
+
+#[derive(Debug, Deserialize)]#[serde(rename="lyric-language",rename_all="kebab-case")]
+pub struct LyricLanguage {
+	#[serde(rename="xml:lang")]
+	xml_lang: String,
+	name: Option<String>,
+	number: Option<u8>
+}
+
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
 pub struct Font {
 	#[serde(rename="font-family@")]
 	font_family: Option<String>,
 	//font_style: Option<String>,
 	#[serde(rename="font-size@")]
-	font_size: Option<u8>,
+	font_size: Option<f32>,
 	#[serde(rename="font-weight@")]
-	font_weight: Option</*normal,bold*/String>,
+	font_weight: Option</*normal,bold*/String>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="defaults",rename_all="kebab-case")]
 pub struct Defaults {
 	scaling: Option<Scaling>,
-	page_layout: PageLayout,
-	//appearance: Option<Appearance>,
-	//music_font: Option<Font>
+	page_layout: Option<PageLayout>,
+	system_layout: Option<SystemLayout>,
+	#[serde(rename="staff-layout*")]
+	staff_layout: Vec<StaffLayout>,
+	appearance: Option<Appearance>,
+	music_font: Option<Font>,
 	word_font: Option<Font>,
 	#[serde(rename="lyric-font*")]
-	lyric_font: Vec<Font>
-	//lyric_language: Vec<lyric-language>
+	lyric_font: Vec<Font>,
+	lyric_language: Vec<LyricLanguage>
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="position",rename_all="kebab-case")]
@@ -114,8 +169,8 @@ pub struct FormattedText {
 	justify: /*left,center,right*/Option<String>,
 	#[serde(rename="?")]
 	print_style_align: PrintStyleAlign,
-		#[serde(rename="0?")] font: Font,
-		valign: /*top,middle,bottom,baseline*/Option<String>,
+	#[serde(rename="0?")] font: Font,
+	valign: /*top,middle,bottom,baseline*/Option<String>,
 	#[serde(rename="$")]
 	content: String,
 }
@@ -256,8 +311,7 @@ enum WedgeType { Crescendo, Diminuendo, Stop, Continue }
 
 #[derive(Debug, Deserialize)]#[serde(rename="wedge",rename_all="kebab-case")]
 pub struct Wedge {
-	//r#type: WedgeType,
-	#[serde(rename="type")] r_type: WedgeType,
+	r#type: WedgeType,
 	number: Option<u8>,
 	#[serde(rename="?")] position: Option<Position>,
 }
@@ -316,8 +370,7 @@ pub struct NoteType {
 
 #[derive(Debug, Deserialize)]#[serde(rename="tie",rename_all="kebab-case")]
 pub struct Tie {
-	//r#type: /*start,stop*/String,
-	#[serde(rename="type")] r_type: /*start,stop*/String,
+	r#type: /*start,stop*/String,
 	//time-only: Option
 }
 
@@ -329,7 +382,7 @@ pub enum StemDirection {
 #[derive(Debug, Deserialize)]#[serde(rename="stem",rename_all="kebab-case")]
 pub struct Stem {
 	#[serde(rename="$")]
-	r#value: StemDirection,
+	value: StemDirection,
 	//y-position
 	//color
 }
@@ -370,8 +423,7 @@ pub enum TiedType { Start, Stop, Continue, LetRing }
 
 #[derive(Debug, Deserialize)]#[serde(rename="tied",rename_all="kebab-case")]
 pub struct Tied {
-	//r#type: TiedType,
-	#[serde(rename="type")] r_type: TiedType,
+	r#type: TiedType,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
@@ -439,7 +491,6 @@ pub struct Note {
 	pub chord: Option<()>,
 	voice: Option<u8>,
 	pub r#type: Option<NoteType>,
-	//#[serde(rename="type")] r_type: Option<NoteType>,
 	#[serde(rename="dot*")]
 	dot: Vec<EmptyPlacement>,
 	#[serde(rename="tie{0,2}")]
@@ -462,8 +513,7 @@ pub struct Backup {
 #[derive(Debug, Deserialize)]#[serde(rename="ending",rename_all="kebab-case")]
 pub struct Ending {
 	number: u8,
-	//r#type: /*start,stop,discontinue*/String,
-	#[serde(rename="type")] r_type: /*start,stop,discontinue*/String,
+	r#type: /*start,stop,discontinue*/String,
 	#[serde(rename="?")]
 	print_style: PrintStyle,
 }

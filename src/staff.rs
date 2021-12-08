@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, core::{MinMax, Bounds}, crate::{music_xml::{self, Clef, ClefSign, Pitch, StemDirection, Note}}};
+use {derive_more::{Deref, DerefMut}, vector::MinMax, crate::{music_xml::{self, Clef, ClefSign, Pitch, StemDirection, Note}}};
 
 #[derive(Default)] pub struct Staff { pub clef: Option<Clef>, pub octave: i8 }
 
@@ -35,7 +35,7 @@ pub trait Chord {
 impl Chord for Vec<&Note> {
 	fn staff(&self) -> usize { (&self.first().unwrap().staff.unwrap()).into() }
     fn bounds(&self, staves: &[Staff]) -> MinMax<i8> {
-        self.iter().filter(|x| x.has_stem()).filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).bounds().unwrap() // Looses staff
+        self.iter().filter(|x| x.has_stem()).filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).reduce(MinMax::minmax).unwrap() // Looses staff
     }
     fn stem_step(&self, staves: &[Staff], direction: StemDirection) -> i8 {
 	    let bounds = self.bounds(staves);
