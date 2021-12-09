@@ -1,9 +1,9 @@
 package={name='music', version='0.0.0', edition='2021'}
 
 [dependencies]
+assert2='*'
 anyhow='*'
 fehler='*'
-lazy_static='*'
 serde='*'
 serde_derive='*'
 roxmltree='*'

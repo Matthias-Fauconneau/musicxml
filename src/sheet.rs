@@ -25,9 +25,7 @@ impl<'t> Sheet<'t> {
 
 impl Default for Sheet<'_> {
     fn default() -> Self {
-	    lazy_static::lazy_static! {
-		    static ref font: ui::font::File<'static> = ui::font::open(std::path::Path::new("/usr/local/share/fonts/bravura/Bravura.otf")).unwrap();
-	    }
+		static font: std::lazy::SyncLazy<ui::font::File<'static>> = std::lazy::SyncLazy::new(|| ui::font::open(std::path::Path::new(&(std::env::var("HOME").unwrap()+"/.local/share/fonts/Bravura.otf"))).unwrap());
 	    Self::new(&font)
     }
 }

@@ -1,4 +1,4 @@
-#![feature(let_else)]
+#![feature(once_cell,let_else)]
 mod xml;
 mod music_xml;
 mod music;

@@ -688,7 +688,7 @@ pub struct Note {
 	#[serde(rename="notations*")]
 	notations: Vec<Notations>,
 	pub staff: Option<Staff>,
-	stem: Option<Stem>,
+	pub stem: Option<Stem>,
 	pub chord: Option<()>,
 	pub grace: Option<Grace>,
 	#[serde(rename="")]

@@ -1,5 +1,5 @@
 // Opiniated features for MusicXML
-use crate::music_xml::{Step, ClefSign, Clef, Pitch, Note, NoteData, NoteTypeValue, Backup, MusicData};
+use crate::music_xml::{Step, ClefSign, Clef, Pitch, Note, NoteData, NoteTypeValue, Backup, Forward, MusicData};
 
 impl From<&Step> for i8 { fn from(step: &Step) -> Self { use Step::*; match step { C=>0, D=>1, E=>2, F=>3, G=>4, A=>5, B=>6 } } }
 
@@ -30,15 +30,16 @@ impl std::fmt::Display for MusicData { fn fmt(&self, f: &mut std::fmt::Formatter
 pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> impl Iterator<Item=(u32, &'t MusicData)> {
 	use itertools::Itertools;
 	it.into_iter().scan((0,0), {fn f<'t>( (t, next_t) : &mut (u32, u32), music_data: &'t MusicData) -> Option<(u32, &'t MusicData)> {
-		if let MusicData::Note(Note{chord: Some(_), ..}) = music_data {/*Chord inhibits preceding note progress, i.e starts at the preceding note time*/}
-		else { *t = *next_t; } // Normal progress
-		let start = *t;
+		if !matches!(music_data, MusicData::Note(Note{chord: Some(()), ..})) { *t = *next_t; } // Normal progress
+		// else chord inhibits preceding note progress, i.e starts at the preceding note time
+		let t = *t;
 		match music_data {
-			MusicData::Backup(Backup{duration}) => { *next_t = *t - duration; },
-			MusicData::Note(Note{duration: Some(duration), ..}) => { *next_t = *t + duration; },
-			_ => {},
+			MusicData::Note(Note{duration: Some(duration), ..}) => { *next_t = std::cmp::max(*next_t, t + duration); /*duration from first (longest)*/},
+			MusicData::Backup(Backup{duration}) => { assert2::assert!(t >= *duration); *next_t = t - duration; },
+			MusicData::Forward(Forward{duration}) => { *next_t = t + duration; },
+			MusicData::Note(Note{duration: None, ..})|MusicData::Print(_)|MusicData::Attributes(_)|MusicData::Direction(_)|MusicData::Barline(_) => {}
 		}
-		Some((start, music_data))
+		Some((t, music_data))
 	} f}).sorted_by_key(|&(t,_)| t)
 }
 
@@ -46,15 +47,19 @@ pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> imp
 pub fn batch_beamed_group_of_notes<'t, I: IntoIterator<Item=(u32,&'t MusicData)>>(it: I) -> impl Iterator<Item=(u32,BeamedMusicData<'t>)> {
 	use itertools::Itertools;
     it.into_iter().peekable().batching({
-	    let mut beam = None; //Option<(u32, Vec::<Vec<Note>>)>;
-	    let mut chord = Vec::<&Note>::new();
+	    let mut beam = None;
+	    let mut chord = None;
 	    move |it| loop {
-			if let Some((t, MusicData::Note(_))) = it.peek() {
-				let (_, beam) = beam.get_or_insert((*t, Vec::new()));
-				if let Some((_, MusicData::Note(Note{chord: Some(()), ..}))) = it.peek() {} else {
-					beam.push(std::mem::replace(&mut chord, Vec::new()));
+			if let Some((_, MusicData::Note(Note{stem: Some(_),..}))) = it.peek() {
+				let Some((t, MusicData::Note(note))) = it.next() else { unreachable!() };
+				if let Note{chord: None, ..} = note { // Next chord
+					if let Some((t,chord)) = chord.take() { // Commit any pending chord
+						let (_, beam) = beam.get_or_insert((t, Vec::new()));
+						beam.push(chord);
+					}
 				}
-				if let Some((_, MusicData::Note(note))) = it.next() { chord.push(note); } else { unreachable!() }
+				let (_, chord) = chord.get_or_insert((t, Vec::new()));
+				chord.push(note);
 			}
 			else if let Some((t, beam)) = beam.take() { return Some((t, BeamedMusicData::Beam(beam))); }
 		    else { let (t, music_data) = it.next()?; return Some((t, BeamedMusicData::MusicData(music_data))); }
