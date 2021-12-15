@@ -13,8 +13,7 @@ pub fn layout(music: &MusicXML, size: size) -> Graphic<'static> {
 			let music_data = sort_by_start_time(&measure.music_data);
 			let music_data = batch_beamed_group_of_notes(music_data);
 			let mut measure = MusicLayoutContext{music_data, layout_context: MeasureLayoutContext::new(&sheet)}; //::new(music_data, measure);
-			while let Some((t, x, music_data)) = measure.next() {
-				println!("{} {} {:?}", t, x, music_data);
+			while let Some((_, _, music_data)) = measure.next() {
 				use {BeamedMusicData::{Beam, MusicData}, music_xml::MusicData::*};
 			    match music_data {
 				    Beam(beam) => measure.beam(&staves, &beam),
