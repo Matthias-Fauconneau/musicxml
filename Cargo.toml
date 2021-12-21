@@ -7,6 +7,7 @@ fehler='*'
 serde='*'
 serde_derive='*'
 roxmltree='*'
+appendlist='*'
 itertools='*'
 derive-more={package='derive_more', version='*'}
 ttf-parser='*'

@@ -206,7 +206,7 @@ pub struct FormattedText {
 	#[serde(rename="?")]
 	print_style_align: PrintStyleAlign,
 	#[serde(rename="$")]
-	content: String,
+	pub content: String,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="credit",rename_all="kebab-case")]
@@ -438,8 +438,8 @@ pub enum DynamicText { pppppp,ppppp,pppp,ppp,pp,p,mp,mf,f,ff,fff,ffff,fffff,ffff
 
 #[derive(Debug, Deserialize)]#[serde(rename="dynamics",rename_all="kebab-case")]
 pub struct Dynamics {
-	#[serde(rename="?")] print_style: PrintStyle,
-	#[serde(rename="")] text: DynamicText,
+	#[serde(rename="?")] pub print_style: PrintStyle,
+	#[serde(rename="")] pub text: DynamicText,
 }
 
 #[derive(Debug, Deserialize)]#[serde(rename="type",rename_all="kebab-case")]
@@ -465,7 +465,7 @@ pub enum DirectionTypeData {
 #[derive(Debug, Deserialize)]#[serde(rename="direction-type",rename_all="kebab-case")]
 pub struct DirectionType {
 	#[serde(rename="+")]
-	content: Vec<DirectionTypeData>,
+	pub content: Vec<DirectionTypeData>,
 }
 
 //type Staff = /*1-*/u8;
@@ -488,7 +488,7 @@ pub struct Offset {
 #[derive(Debug, Deserialize)]#[serde(rename="direction",rename_all="kebab-case")]
 pub struct Direction {
 	#[serde(rename="direction-type+")]
-	direction_type: Vec<DirectionType>,
+	pub direction_type: Vec<DirectionType>,
 	offset: Option<Offset>,
 	voice: Option<String>,
 	staff: Option<Staff>,

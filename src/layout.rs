@@ -1,25 +1,28 @@
-use {::xy::{size, xy}, ui::graphic::{Ratio, Rect, Graphic}, crate::music_xml::{self, MusicXML}};
-pub fn layout(music: &MusicXML, size: size) -> Graphic<'static> {
+use {::xy::{xy, size, Rect}, ui::{Ratio, Graphic}, crate::{Font, music_xml::{self, MusicXML}}};
+pub fn layout<'f: 'g, 'g, 't>(font: &'f Font, music: &MusicXML, size: size) -> Graphic<'g, 't> {
 	use crate::{sheet::Sheet, staff::Staff, music::*, measure::{MeasureLayoutContext,MusicLayoutContext}};
-	let sheet = Sheet::default();
+	let sheet = Sheet::new(font);
 	let scale = Ratio{num: 240, div: sheet.staff_height};
 	let size = size / scale;
-	let mut staves = <[Staff; 2]>::default(); // : [Staff; 2] = /*[Staff::default; 2]*/array::Iterator::collect(std::iter::from_fn(|| Some(Staff::default())));
-	let mut graphic = Graphic::new(scale, &sheet.font);
+	let mut staves = <[Staff; 2]>::default();
+	let mut graphic = Graphic::new(scale);
 	for part in &music.score_partwise.parts {
-		let mut system = xy{x: 0, y: 0};
+		let mut system = xy{x:0,y:0};
 		graphic.rects.extend(sheet.raster(staves.iter()));
 		for measure in &part.measures {
 			let music_data = sort_by_start_time(&measure.music_data);
 			let music_data = batch_beamed_group_of_notes(music_data);
-			let mut measure = MusicLayoutContext{music_data, layout_context: MeasureLayoutContext::new(&sheet)}; //::new(music_data, measure);
+			let mut measure = MusicLayoutContext{music_data, layout_context: MeasureLayoutContext::new(&sheet)};
 			while let Some((_, _, music_data)) = measure.next() {
+				eprintln!("{music_data:?}");
 				use {BeamedMusicData::{Beam, MusicData}, music_xml::MusicData::*};
 			    match music_data {
 				    Beam(beam) => measure.beam(&staves, &beam),
 				    MusicData(music_data) => match music_data {
 					    Backup(_) => {},
 					    Attributes(attributes) => measure.attributes(&mut staves, attributes),
+						Direction(direction) => measure.direction(&mut staves, direction).unwrap(),
+						Print(_) => {},
 					    _ => {},
 				    }
 			    }
@@ -45,6 +48,7 @@ pub fn layout(music: &MusicXML, size: size) -> Graphic<'static> {
 				));
 			}
 			system.x += measure.x + (space / 2);
+			break;
 		}
 	}
 	graphic
