@@ -148,7 +148,7 @@ pub struct LyricLanguage {
 #[derive(Debug, Deserialize)]#[serde(rename_all="kebab-case")]
 pub struct Font {
 	#[serde(rename="font-family@")]
-	font_family: Option<String>,
+	pub font_family: Option<String>,
 	#[serde(rename="font-style@")]
 	font_style: Option<String>,
 	#[serde(rename="font-size@")]
@@ -183,7 +183,7 @@ pub struct Position {
 #[derive(Debug, Deserialize)]#[serde(rename="print-style",rename_all="kebab-case")]
 pub struct PrintStyle {
 	#[serde(rename="?")] position: Position,
-	#[serde(rename="1?")] font: Font,
+	#[serde(rename="1?")] pub font: Font,
 	color: Option<Color>,
 }
 

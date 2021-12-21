@@ -1,5 +1,5 @@
-use {::xy::{xy, size, Rect}, ui::{Ratio, Graphic}, crate::{Font, music_xml::{self, MusicXML}}};
-pub fn layout<'f: 'g, 'g, 't>(font: &'f Font, music: &MusicXML, size: size) -> Graphic<'g, 't> {
+use {::xy::{xy, size, Rect}, ui::{Ratio, Graphic}, crate::{music_xml::{self, MusicXML}, Font}};
+pub fn layout(font: Font, music: &MusicXML, size: size) -> Graphic {
 	use crate::{sheet::Sheet, staff::Staff, music::*, measure::{MeasureLayoutContext,MusicLayoutContext}};
 	let sheet = Sheet::new(font);
 	let scale = Ratio{num: 240, div: sheet.staff_height};

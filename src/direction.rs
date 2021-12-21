@@ -1,7 +1,7 @@
 use {std::{path::Path,env::var}, xy::xy, fehler::throws, crate::Error,
 	crate::music_xml::{Font, PrintStyle, Direction, DirectionType, DirectionTypeData, Dynamics}, 
 	crate::{measure::MeasureLayoutContext, staff::Staff}};
-impl<'f: 'g, 'g> MeasureLayoutContext<'f,'_,'_,'_,'g> { 
+impl MeasureLayoutContext<'_> { 
 	#[throws] pub fn direction(&mut self, _staves: &mut [Staff], Direction{direction_type, ..}: &Direction) {
 		for DirectionType{content} in direction_type {
 			for direction in content { match direction {
