@@ -3,7 +3,6 @@ pub fn layout(font: Font, music: &MusicXML, size: size) -> Graphic {
 	use crate::{sheet::Sheet, staff::Staff, music::*, measure::{MeasureLayoutContext,MusicLayoutContext}};
 	let sheet = Sheet::new(font);
 	let scale = Ratio{num: 240, div: sheet.staff_height};
-	dbg!(size);
 	let size = size.map(|&x| scale.rcp().ceil(x));
 	let mut staves = <[Staff; 2]>::default();
 	let mut graphic = Graphic::new(scale);
