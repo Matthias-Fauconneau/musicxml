@@ -1,6 +1,6 @@
 #[allow(non_snake_case)] pub mod SMuFL {
     #![allow(non_upper_case_globals)]
-    pub struct EngravingDefaults {pub staff_line_thickness: u8, pub stem_thickness: u8, pub thin_barline_thickness: u8, pub beam_thickness: u8}
+    pub struct EngravingDefaults {pub staff_line_thickness: u32, pub stem_thickness: u32, pub thin_barline_thickness: u32, pub beam_thickness: u32}
     #[derive(PartialEq)] pub enum Anchor { StemUpNW, StemDownNW, StemUpSE, StemDownSW }
     pub mod clef {
 	    pub const G : char = '\u{E050}';

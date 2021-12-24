@@ -12,9 +12,7 @@ itertools='*'
 derive-more={package='derive_more', version='*'}
 ttf-parser='*'
 iter={git='https://github.com/Matthias-Fauconneau/iter'}
+num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
 xy={git='https://github.com/Matthias-Fauconneau/xy'}
 ui={git='https://github.com/Matthias-Fauconneau/ui'}
-
-[patch.'https://github.com/Matthias-Fauconneau/ui']
-ui={path='../ui'}
