@@ -7,7 +7,6 @@ pub fn layout(font: Font, music: &MusicXML, size: size) -> Graphic {
 	let size = size.map(|&x| scale.rcp().ceil(x));
 	let mut staves = <[Staff; 2]>::default();
 	let mut graphic = Graphic::new(scale);
-	//assert!(music.score_partwise.parts.len() == 2);
 	for part in &music.score_partwise.parts {
 		let mut system = xy{x:0,y:0};
 		graphic.rects.extend(sheet.raster(staves.iter()));

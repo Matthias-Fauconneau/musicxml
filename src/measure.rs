@@ -8,7 +8,7 @@ impl<'t> Measure<'t> {
 		self.graphic.glyphs.push(Glyph{top_left: xy{
 			x: x as i32 + self.sheet.face.glyph_hor_side_bearing(id).unwrap() as i32,
 			y: self.sheet.y(staff_index, step) - self.sheet.face.glyph_bounding_box(id).unwrap().y_max as i32 + dy,
-		}, face: self.sheet.face, id})
+		}, face: self.sheet.face, id, scale: 1.})
 	}
 	pub fn push_glyph(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: char) {
 		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(id).unwrap())
