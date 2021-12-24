@@ -16,3 +16,6 @@ num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
 xy={git='https://github.com/Matthias-Fauconneau/xy'}
 ui={git='https://github.com/Matthias-Fauconneau/ui'}
+
+[patch.'https://github.com/smithay/wayland-rs']
+wayland-backend={path='../wayland-rs/wayland-backend'}

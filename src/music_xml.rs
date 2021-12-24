@@ -424,12 +424,15 @@ pub struct Metronome {
 	parentheses: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]#[serde(rename_all="lowercase")]
+pub enum UpDownStopContinue { Up, Down, Stop, Continue }
+
 fn eight() -> u8 { 8 }
 #[derive(Debug, Deserialize)]#[serde(rename="octave-shift",rename_all="kebab-case")]
 pub struct OctaveShift {
-	r#type: /*up,down,stop,continue*/String,
-	number: Option<u8>,
-	#[serde(default="eight")] size: u8,
+	pub r#type: UpDownStopContinue,
+	pub number: Option<u8>,
+	#[serde(default="eight")] pub size: u8,
 	#[serde(rename="?")] print_style: PrintStyle,
 }
 
@@ -491,7 +494,7 @@ pub struct Direction {
 	pub direction_type: Vec<DirectionType>,
 	offset: Option<Offset>,
 	voice: Option<String>,
-	staff: Option<Staff>,
+	pub staff: Option<Staff>,
 	sound: Option<Sound>,
 	placement: /*above,below*/Option<String>,	
 }

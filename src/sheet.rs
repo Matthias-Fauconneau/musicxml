@@ -1,5 +1,5 @@
 #![allow(non_upper_case_globals)]
-use {derive_more::Deref, ttf_parser::Face, crate::{Font, font::{SMuFont, SMuFL::EngravingDefaults}}, ::xy::{xy,Rect}};
+use {derive_more::Deref, ttf_parser::Face, crate::{Font, font::{SMuFont, SMuFL::EngravingDefaults}}, ::xy::Rect};
 
 #[derive(Deref)] 
 pub struct Sheet {
@@ -28,9 +28,8 @@ impl Sheet {
 	// staff: 0: bass .. 1: treble; step: -8: bottom .. 0: top
 	pub fn y(&self, staff: usize, step: i8) -> i32 { - ((staff as u32 * self.staff_distance) as i32) - step as i32 * (self.staff_height/8) as i32 }
 	pub fn raster<'t>(&'t self, staves: impl Iterator + 't) -> impl Iterator<Item=Rect> + 't {
-		pub fn horizontal(y: i32, dy: u32, x0: i32, x1: i32) -> Rect { Rect{ min: xy{ y: y-(dy/2) as i32, x: x0 }, max: xy{ y: y+(dy/2) as i32, x: x1 } } }
 		staves.enumerate().map(move |(staff, _)|
-			(0..=8).step_by(2).map(move |step| horizontal(self.y(staff, step), self.engraving_defaults.staff_line_thickness, 0, i32::MAX))
+			(0..=8).step_by(2).map(move |step| ui::graphic::horizontal(self.y(staff, step), self.engraving_defaults.staff_line_thickness, 0, i32::MAX))
 		).flatten()
 	}
 }

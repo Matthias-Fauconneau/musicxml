@@ -14,7 +14,7 @@ impl MeasureLayoutContext<'_> { pub fn attributes(&mut self, staves: &mut [Staff
 				for step in steps {
 					for (index, Staff{clef, ..}) in staves.iter().enumerate() {
 						let x = self.x;
-						self.push_glyph_at_pitch(x, StaffRef{index, staff: &Staff{clef: *clef, octave: 0}}, &Pitch::new(clef.as_ref().unwrap(), step), symbol);
+						self.push_glyph_at_pitch(x, StaffRef{index, staff: &Staff{clef: *clef, ..Staff::default()}}, &Pitch::new(clef.as_ref().unwrap(), step), symbol);
 					}
 				}
 			};

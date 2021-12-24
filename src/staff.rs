@@ -1,6 +1,10 @@
 use {derive_more::{Deref, DerefMut}, vector::MinMax, crate::{music_xml::{self, Clef, ClefSign, Pitch, StemDirection, Note}}};
 
-#[derive(Default, Debug)] pub struct Staff { pub clef: Option<Clef>, pub octave: i8 }
+#[derive(Default, Debug)] pub struct Staff {
+	pub clef: Option<Clef>,
+	pub octave: i8,
+	pub octave_start_x: Option<u32>
+}
 
 impl From<&music_xml::Staff> for usize { fn from(staff: &music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
 
