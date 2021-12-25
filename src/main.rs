@@ -13,8 +13,8 @@ mod beam;
 mod attributes;
 mod direction;
 mod layout; use layout::layout;
-fn main() -> ui::Result { 
+fn main() -> ui::Result {
     let font = &*Box::leak::<'static>(Default::default());
-    let sheet = &*Box::leak::<'static>(xml::from_document(&xml::parse(&std::fs::read("../Documents/Scores/sheet.xml")?)?)?);
-    ui::run(ui::graphic::Widget(|size| Ok(layout(font, sheet, size)))) 
+    let sheet = &*Box::leak::<'static>(xml::from_document(&xml::parse(&std::fs::read("../Scores/sheet.xml")?)?)?);
+    ui::run(ui::graphic::Widget(|size| Ok(layout(font, sheet, size))))
 }

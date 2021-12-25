@@ -11,14 +11,14 @@ impl<T> VecExt for Vec<T> {
 
 #[macro_use] mod serde;
 
-#[derive(Debug,derive_more::Display,derive_more::From)] struct Error(anyhow::Error);
-impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static+Send+Sync) -> Error { Error(anyhow::Error::msg(msg)) } }
+#[derive(Debug,derive_more::Display,derive_more::From)] struct Error(String);
+impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static+Send+Sync) -> Error { Error(msg.to_string()) } }
 impl std::error::Error for Error {}
-impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(anyhow::Error::msg(msg.to_string())) } }
-impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { Error(anyhow::Error::from(t)) } }
-impl From<std::num::ParseIntError> for Error { fn from(t: std::num::ParseIntError) -> Self { Error(anyhow::Error::from(t)) } }
-impl From<std::num::ParseFloatError> for Error { fn from(t: std::num::ParseFloatError) -> Self { Error(anyhow::Error::from(t)) } }
-impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolError) -> Self { Error(anyhow::Error::from(t)) } }
+impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(msg.to_string()) } }
+impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { Error(t.to_string()) } }
+impl From<std::num::ParseIntError> for Error { fn from(t: std::num::ParseIntError) -> Self { Error(t.to_string()) } }
+impl From<std::num::ParseFloatError> for Error { fn from(t: std::num::ParseFloatError) -> Self { Error(t.to_string()) } }
+impl From<std::str::ParseBoolError> for Error { fn from(t: std::str::ParseBoolError) -> Self { Error(t.to_string()) } }
 
 use {fehler::throws, ::serde::de::{self, Visitor, Deserializer}};
 
@@ -152,7 +152,7 @@ impl<'de> ElementDeserializer<'de> {
 						return None;
 					}
 				}
-			} 
+			}
 			if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
 				Some((field, Value::EmptySeq(EmptySeqDeserializer)))
 			} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
@@ -200,7 +200,7 @@ impl<'de> Deserializer<'de> for &mut ElementDeserializer<'de> {
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(self, name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
 		let value = self.deserialize_struct(name, fields, visitor)?;
-		use itertools::Itertools; 
+		use itertools::Itertools;
 		while self.children.peek().filter(|child| child.is_text() && child.text().unwrap().trim().is_empty()).is_some() { self.children.next(); }
 		assert!(self.children.peek().is_none(), "Remaining elements '{:?}' in {name}", self.children.clone().format(" "));
 		value
@@ -243,10 +243,10 @@ impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
 	::serde::forward_to_deserialize_any!{char bytes byte_buf identifier bool u64 u128 i64 i128 f64 unit_struct newtype_struct tuple tuple_struct ignored_any}
 }
 
-#[throws(anyhow::Error)] pub fn from_node<'input: 'de, 't: 'de, 'de, T: ::serde::Deserialize<'de>>(node: roxmltree::Node<'t, 'input>) -> T {
+#[throws(crate::Error)] pub fn from_node<'input: 'de, 't: 'de, 'de, T: ::serde::Deserialize<'de>>(node: roxmltree::Node<'t, 'input>) -> T {
 	T::deserialize(ElementDeserializer::new(node))?
 }
-#[throws(anyhow::Error)] pub fn from_document<'input: 'de, 'de, T: ::serde::Deserialize<'de>>(document: &'de roxmltree::Document<'input>) -> T {
+#[throws(crate::Error)] pub fn from_document<'input: 'de, 'de, T: ::serde::Deserialize<'de>>(document: &'de roxmltree::Document<'input>) -> T {
 	from_node(document.root())?
 }
-#[throws(anyhow::Error)] pub fn parse(bytes: &[u8]) -> roxmltree::Document { roxmltree::Document::parse(std::str::from_utf8(bytes)?)? }
+#[throws(crate::Error)] pub fn parse(bytes: &[u8]) -> roxmltree::Document { roxmltree::Document::parse(std::str::from_utf8(bytes)?)? }

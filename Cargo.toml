@@ -1,8 +1,6 @@
 package={name='music', version='0.0.0', edition='2021'}
 
 [dependencies]
-assert2='*'
-anyhow='*'
 fehler='*'
 serde='*'
 serde_derive='*'
@@ -18,4 +16,4 @@ xy={git='https://github.com/Matthias-Fauconneau/xy'}
 ui={git='https://github.com/Matthias-Fauconneau/ui'}
 
 [patch.'https://github.com/smithay/wayland-rs']
-wayland-backend={path='../wayland-rs/wayland-backend'}
+wayland-backend={git='https://github.com/Matthias-Fauconneau/wayland-rs',branch='rework-317'}

@@ -35,7 +35,7 @@ pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> imp
 		let t = *t;
 		match music_data {
 			MusicData::Note(Note{duration: Some(duration), ..}) => { *next_t = std::cmp::max(*next_t, t + duration); /*duration from first (longest)*/},
-			MusicData::Backup(Backup{duration}) => { assert2::assert!(t >= *duration); *next_t = t - duration; },
+			MusicData::Backup(Backup{duration}) => { assert!(t >= *duration); *next_t = t - duration; },
 			MusicData::Forward(Forward{duration}) => { *next_t = t + duration; },
 			MusicData::Note(Note{duration: None, ..})|MusicData::Print(_)|MusicData::Attributes(_)|MusicData::Direction(_)|MusicData::Barline(_) => {}
 		}
