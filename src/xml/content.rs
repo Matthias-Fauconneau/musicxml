@@ -20,10 +20,10 @@ impl<'t, 'de> de::Deserializer<'de> for ContentDeserializer<'t, 'de> {
 	}
 
 	#[throws] fn deserialize_enum<V: Visitor<'de>>(mut self, _name: &'static str, _variants: &'static [&'static str], visitor: V) -> V::Value {
-		let node = self.0.children.by_ref().filter(|child| child.is_element()).next()/*.ok_or_else(|| Error::msg("Expected variant"))?*/.unwrap();
-		let tag = node.tag_name().name();
+		let element = self.0.children.by_ref().filter(|child| child.is_element()).next()/*.ok_or_else(|| Error::msg("Expected variant"))?*/.unwrap();
+		let tag = element.tag_name().name();
 		//assert!(variants.contains(&tag), "no {tag} in {_variants:?}");
-		visitor.visit_enum(serde::de::value::MapAccessDeserializer::new(serde::de::value::MapDeserializer::new(std::iter::once((tag, ElementDeserializer::new(node))))))?
+		visitor.visit_enum(serde::de::value::MapAccessDeserializer::new(serde::de::value::MapDeserializer::new(std::iter::once((tag, ElementDeserializer::new(element))))))?
 	}
 
 	#[throws] fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> V::Value {

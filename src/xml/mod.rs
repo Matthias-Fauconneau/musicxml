@@ -66,7 +66,7 @@ impl<'de> Deserializer<'de> for TextDeserializer<'de> {
 
 #[derive(Clone)] struct ElementDeserializer<'de> {
 	name: &'de str,
-	attributes: &'de [roxmltree::Attribute<'de>], //std::iter::Peekable<std::slice::Iter<'de, roxmltree::Attribute<'de>>>,
+	attributes: &'de [roxmltree::Attribute<'de>],
 	children: std::iter::Peekable<roxmltree::Children<'de, 'de>>,
 }
 
@@ -99,68 +99,80 @@ impl<'de> ::serde::de::IntoDeserializer<'de, Error> for EmptySeqDeserializer { t
 impl<'de> ::serde::de::IntoDeserializer<'de, Error> for DefaultDeserializer { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
 impl<'t, 'de> ::serde::de::IntoDeserializer<'de, Error> for Value<'t, 'de> { type Deserializer = Self; fn into_deserializer(self) -> Self::Deserializer { self } }
 
+struct FieldIterator<'t, 'de> {
+	fields: Vec<(&'static str,(&'static str, &'static str))>,
+	attributes: std::slice::Iter<'de, roxmltree::Attribute<'de>>,
+	element: &'t std::cell::RefCell<&'t mut ElementDeserializer<'de>>
+}
+impl<'t, 'de> FieldIterator<'t, 'de> { fn new(fields: &'static [&'static str], element: &'t std::cell::RefCell<&'t mut ElementDeserializer<'de>>) -> Self { Self{
+		fields: fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>(),
+		attributes: element.borrow().attributes.iter(),
+		element
+}}}
+impl<'t, 'de> Iterator for FieldIterator<'t, 'de> {
+	type Item = (&'static str, Value<'t, 'de>);
+	fn next(&mut self) -> Option<Self::Item> {
+		let mut element = self.element.borrow_mut();
+		while let Some(a) = self.attributes.next() {
+			if let Some((field,_)) = self.fields.take_first(|(_,(name,_))| name == &a.name()) {
+				return Some((field, Value::Text(TextDeserializer(a.value()))));
+			}
+			else if let Some(index) = self.fields.iter().position(|(field,(_,def))| field.is_empty() || def==&"?" ) {
+				let (field,(_,_def)) = self.fields[index];
+				self.fields.remove(index);
+				return Some((field, Value::Content(ContentDeserializer(element)))); // Flatten
+			}
+		}
+		while let Some(child) = element.children.peek() {
+			let name = child.tag_name().name();
+			if !name.is_empty() {
+				if let Some((field,(tag,def))) = self.fields.take_first(|(_,(id,_))| id == &name) {
+					if !def.is_empty() {
+						return Some((field, Value::Seq(SeqDeserializer{children: std::cell::RefMut::map(element, |s| &mut s.children), tag}))); // External sequence
+					} else {
+						use roxmltree::NodeType::*; match child.node_type() {
+							Text => return Some((field, Value::Text(TextDeserializer(element.children.next().unwrap().text().unwrap())))),
+							Element => return Some((field, Value::Element(ElementDeserializer::new(element.children.next().unwrap())))),
+							_ => todo!(),
+						}
+					}
+				}
+			}/*else*/ if child.is_element() /*&&*/{ if let Some(index) = self.fields.iter().position(|(_,(id,_))| id.is_empty() /*|| id.parse()==Ok(index)*/) {
+				let (field,(_,_def)) = self.fields[index];
+				self.fields.remove(index);
+				return Some((field, Value::Content(ContentDeserializer(element)))); // External enum tag
+			}} /*else*/ if child.is_text() { if let Some((field,_)) = self.fields.take_first(|(_,(_,def))| def==&"$") {
+				return Some((field, Value::Text(TextDeserializer(element.children.next().unwrap().text().unwrap())))); // External enum tag
+			}} /*else*/ {
+				if child.is_comment() || (child.is_text() && child.text().unwrap().trim().is_empty()) {
+					element.children.next();
+				} else if let Some((field,_)) = self.fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
+					return Some((field, Value::EmptySeq(EmptySeqDeserializer)));
+				} else if let Some((field,_)) = self.fields.take_first(|(_,(_,def))| def==&"?") {
+					return Some((field, Value::Default(DefaultDeserializer)));
+				} else {
+					return None;
+				}
+			}
+		}
+		if let Some((field,_)) = self.fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
+			Some((field, Value::EmptySeq(EmptySeqDeserializer)))
+		} else if let Some((field,_)) = self.fields.take_first(|(_,(_,def))| def==&"?") {
+			Some((field, Value::Default(DefaultDeserializer)))
+		} else {
+			None
+		}
+	}
+}
+
 impl<'de> ElementDeserializer<'de> {
-    fn new(node: roxmltree::Node<'de, 'de>) -> Self {
-		assert!(node.is_element() || node.is_root(), "{:?}", node);
-		Self{name: node.tag_name().name(), attributes: node.attributes()/*.iter().peekable()*/, children: node.children().peekable()}
+    fn new(element: roxmltree::Node<'de, 'de>) -> Self {
+		assert!(element.is_element() || element.is_root(), "{:?}", element);
+		Self{name: element.tag_name().name(), attributes: element.attributes()/*.iter().peekable()*/, children: element.children().peekable()}
 	}
 
 	#[throws] fn deserialize_struct<V: Visitor<'de>>(&mut self, _name: &'static str, fields: &'static [&'static str], visitor: V) -> V::Value {
-		let mut attributes = self.attributes.iter();
-		let mut fields = fields.iter().map(|&field| (field, field.split_at(field.find(|c| "@$?*+{".contains(c)).unwrap_or(field.len())))).collect::<Vec<_>>();
-		let cell = std::cell::RefCell::new(self);
-		visitor.visit_map(::serde::de::value::MapDeserializer::new(std::iter::from_fn(|| {
-			let mut node = cell.borrow_mut();
-			while let Some(a) = attributes.next() {
-				if let Some((field,_)) = fields.take_first(|(_,(name,_))| name == &a.name()) {
-					return Some((field, Value::Text(TextDeserializer(a.value()))));
-				}
-				else if let Some(index) = fields.iter().position(|(field,(_,def))| field.is_empty() || def==&"?" ) {
-					let (field,(_,_def)) = fields[index];
-					fields.remove(index);
-					return Some((field, Value::Content(ContentDeserializer(node)))); // Flatten
-				}
-			}
-			while let Some(child) = node.children.peek() {
-				let name = child.tag_name().name();
-				if !name.is_empty() {
-					if let Some((field,(tag,def))) = fields.take_first(|(_,(id,_))| id == &name) {
-						if !def.is_empty() {
-							return Some((field, Value::Seq(SeqDeserializer{children: std::cell::RefMut::map(node, |s| &mut s.children), tag}))); // External sequence
-						} else {
-							use roxmltree::NodeType::*; match child.node_type() {
-								Text => return Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))),
-								Element => return Some((field, Value::Element(ElementDeserializer::new(node.children.next().unwrap())))),
-								_ => todo!(),
-							}
-						}
-					}
-				}/*else*/ if child.is_element() /*&&*/{ if let Some(index) = fields.iter().position(|(_,(id,_))| id.is_empty() /*|| id.parse()==Ok(index)*/) {
-					let (field,(_,_def)) = fields[index];
-					fields.remove(index);
-					return Some((field, Value::Content(ContentDeserializer(node)))); // External enum tag
-				}} /*else*/ if child.is_text() { if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"$") {
-					return Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))); // External enum tag
-				}} /*else*/ {
-					if child.is_comment() || (child.is_text() && child.text().unwrap().trim().is_empty()) {
-						node.children.next();
-					} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
-						return Some((field, Value::EmptySeq(EmptySeqDeserializer)));
-					} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
-						return Some((field, Value::Default(DefaultDeserializer)));
-					} else {
-						return None;
-					}
-				}
-			}
-			if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"*" || def.starts_with("{0,")) {
-				Some((field, Value::EmptySeq(EmptySeqDeserializer)))
-			} else if let Some((field,_)) = fields.take_first(|(_,(_,def))| def==&"?") {
-				Some((field, Value::Default(DefaultDeserializer)))
-			} else {
-				None
-			}
-		})))?
+		visitor.visit_map(::serde::de::value::MapDeserializer::new(FieldIterator::new(fields, &std::cell::RefCell::new(self))))?
 	}
 
 	#[throws] fn simple_content(&mut self) -> &'de str {
