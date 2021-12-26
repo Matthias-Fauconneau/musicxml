@@ -12,7 +12,7 @@ impl<T> VecExt for Vec<T> {
 #[macro_use] mod serde;
 
 #[derive(Debug,derive_more::Display,derive_more::From)] struct Error(String);
-impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static+Send+Sync) -> Error { Error(msg.to_string()) } }
+//impl Error { pub fn msg(msg: impl std::fmt::Debug+std::fmt::Display+'static+Send+Sync) -> Error { Error(msg.to_string()) } }
 impl std::error::Error for Error {}
 impl ::serde::de::Error for Error { fn custom<T: std::fmt::Display>(msg: T) -> Self { Error(msg.to_string()) } }
 impl From<de::value::Error> for Error { fn from(t: de::value::Error) -> Self { Error(t.to_string()) } }
@@ -126,7 +126,7 @@ impl<'de> ElementDeserializer<'de> {
 				if !name.is_empty() {
 					if let Some((field,(tag,def))) = fields.take_first(|(_,(id,_))| id == &name) {
 						if !def.is_empty() {
-							return Some((field, Value::Seq(SeqDeserializer{node, tag}))); // External sequence
+							return Some((field, Value::Seq(SeqDeserializer{children: std::cell::RefMut::map(node, |s| &mut s.children), tag}))); // External sequence
 						} else {
 							use roxmltree::NodeType::*; match child.node_type() {
 								Text => return Some((field, Value::Text(TextDeserializer(node.children.next().unwrap().text().unwrap())))),

@@ -4,6 +4,7 @@ package={name='music', version='0.0.0', edition='2021'}
 fehler='*'
 serde='*'
 serde_derive='*'
+bincode="*"
 roxmltree='*'
 appendlist='*'
 itertools='*'
@@ -15,5 +16,14 @@ vector={git='https://github.com/Matthias-Fauconneau/vector'}
 xy={git='https://github.com/Matthias-Fauconneau/xy'}
 ui={git='https://github.com/Matthias-Fauconneau/ui'}
 
+[patch.'https://github.com/Matthias-Fauconneau/ui']
+ui={path='../ui'}
 [patch.'https://github.com/smithay/wayland-rs']
 wayland-backend={git='https://github.com/Matthias-Fauconneau/wayland-rs',branch='rework-317'}
+[patch.'https://github.com/Matthias-Fauconneau/piet-gpu']
+piet-gpu-types={path='../piet-gpu/piet-gpu-types'}
+piet-gpu={path='../piet-gpu/piet-gpu'}
+piet-gpu-hal={path='../piet-gpu/piet-gpu-hal'}
+[patch.crates-io]
+ash-window={path='../ash/ash-window'}
+ash={path='../ash/ash'}

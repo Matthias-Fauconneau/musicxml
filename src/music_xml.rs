@@ -496,7 +496,7 @@ pub struct Direction {
 	voice: Option<String>,
 	pub staff: Option<Staff>,
 	sound: Option<Sound>,
-	placement: /*above,below*/Option<String>,	
+	placement: /*above,below*/Option<String>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, PartialOrd, Clone, Copy)]#[serde(rename_all="kebab-case")]
@@ -777,4 +777,12 @@ pub struct ScorePartwise {
 #[derive(Debug, Deserialize)]#[serde(rename="",rename_all="kebab-case")]
 pub struct MusicXML {
     pub score_partwise: ScorePartwise
+}
+
+impl Default for MusicXML {
+	fn default() -> Self {
+		Self{score_partwise: ScorePartwise{version: None, work: None, identification: Identification{creator: vec![], rights: vec![], encoding: None, source: None, miscellaneous: None}, defaults: Defaults{scaling: None, page_layout: None, system_layout: None, staff_layout: vec![], appearance: None, music_font: None, word_font: None, lyric_font: vec![], lyric_language: vec![]}, credits: vec![], part_list: PartList{ start: vec![], score_part: ScorePart{id: "".into(), identification: None,
+        part_link: vec![], part_name: "".into(), part_name_display: None, part_abbreviation: None, part_abbreviation_display: None, score_instrument: vec![], midi_device: None,
+        midi_instrument: None}, part_group_score_part: vec![]}, parts : vec![]}}
+	}
 }
