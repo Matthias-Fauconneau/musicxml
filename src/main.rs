@@ -1,7 +1,6 @@
 #![feature(once_cell,let_else,crate_visibility_modifier,derive_default_enum,closure_track_caller/*,nll*/)]
 pub use fehler::throws;
 crate type Error = Box<dyn std::error::Error>;
-//mod xml;
 mod music_xml;
 mod music;
 crate type Font = &'static appendlist::AppendList<(String, ui::font::File<'static>)>;
@@ -12,7 +11,7 @@ mod measure;
 mod beam;
 mod attributes;
 mod direction;
-//mod layout; use layout::layout;
+mod layout; use layout::layout;
 
 use music_xml::*;
 trait FromElement { fn from<'t, 'input>(element: Node<'t, 'input>) -> Self; }
@@ -262,12 +261,8 @@ impl FromStr for BarStyle { fn from_str(s: &str) -> Self { use BarStyle::*; matc
 fn main() -> ui::Result {
     let text = std::fs::read("../Scores/sheet.xml")?;
     let document =  roxmltree::Document::parse(std::str::from_utf8(&text)?)?;
-    let part : Part = xml::filter(xml::find(document.root_element(), "part").unwrap(), "measure").map(|e| seq(e)).collect();
-    //let sheet = xml::from_document(&document);
-    unimplemented!()
-    /*let sheet = &*Box::leak::<'static>(sheet);
+    let sheet : Part = xml::filter(xml::find(document.root_element(), "part").unwrap(), "measure").map(|e| seq(e)).collect();
+    let sheet = &*Box::leak::<'static>(sheet);
     let font = &*Box::leak::<'static>(Default::default());
-    //let sheet = &*Box::leak::<'static>(bincode::deserialize(&[]).unwrap());
-    //let sheet = &*Box::leak::<'static>(Box::new(music_xml::MusicXML::default()));
-    ui::run(Box::new(ui::graphic::Widget(Box::new(|size| Ok(layout(font, sheet, size))))))*/
+    ui::run(Box::new(ui::graphic::Widget(Box::new(|size| Ok(layout(font, sheet, size))))))
 }
