@@ -222,6 +222,7 @@ impl FromStr for Wedge { fn from_str(s: &str) -> Self { use Wedge::*; match s {
     "continue" => Continue,
     _ => panic!()
 }}}
+//impl FromStr for Dynamics { fn from_str(s: &str) -> Self { use Dynamics::*; match s { "pp" => pp, "p" => p, "mp" => mp, "mf" => mf, "f" => f, "ff" => ff,_ => panic!() }}}
 impl FromElement for DirectionType { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { let e = e.first_element_child().unwrap(); use DirectionType::*; match e.tag_name().name() {
     "metronome" => Metronome{
 		beat_unit: find(e, "beat-unit"),
@@ -232,7 +233,7 @@ impl FromElement for DirectionType { fn from<'t, 'input>(e: Node<'t, 'input>) ->
 		size: try_attribute(e, "size").unwrap_or(8)
     },
 	"words" => Words(FromElement::from(e)),
-	"dynamics" => Dynamics(FromElement::from(e)),
+	"dynamics" => Dynamics(FromStr::from_str(e.first_element_child().unwrap().tag_name().name())),
 	"wedge" => Wedge(attribute(e, "type")),
     e => panic!("{e}")
 }}}

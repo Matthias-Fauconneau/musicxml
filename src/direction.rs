@@ -4,12 +4,12 @@ use {xy::xy, fehler::throws, crate::Error,
 impl MeasureLayoutContext<'_> {
 	#[throws] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { match direction {
 		DirectionType::Dynamics(dynamic) => {
-			let text = format!("{dynamic:?}");
 			let face = ui::text::default_font()[0]; // TODO: italic
 			use ui::{graphic, text::{Plain, View, layout, Glyph, unicode_segmentation::UnicodeSegmentation}};
-			let text = View::new_with_face(&face, Plain(text));
+			let text = View::new_with_face(&face, Plain(dynamic.to_string()));
 			for Glyph{x: dx, id, ..} in layout(&text.font, text.data.0.graphemes(true).enumerate()) {
 				let scale = num::Ratio{num: 1, div: 3};
+				assert!(face.glyph_bounding_box(id).is_some(), "{dynamic:?}");
 				self.measure.graphic.glyphs.push(graphic::Glyph{top_left: xy{
 					x: (self.x+dx) as i32 + face.glyph_hor_side_bearing(id).unwrap() as i32,
 					y: -((self.sheet.staff_height/*+self.staff_distance/2*/) as i32),

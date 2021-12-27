@@ -20,7 +20,8 @@
 	pub line: /*2-5*/Option<u8>,
 }
 #[derive(Debug)] pub enum UpDownStopContinue { Up, Down, Stop, Continue }
-//#[derive(Debug)] pub enum Dynamics { /*pppppp,ppppp,pppp,ppp,*/pp,p,mp,mf,f,ff/*,fff,ffff,fffff,ffffff, sf,sfp,sfpp,fp,rf,rfz,sfz,sffz,fz,n,pf,sfzp*/ }
+//#[derive(Debug)] #[allow(non_camel_case_types)] pub enum Dynamics { /*pppppp,ppppp,pppp,ppp,*/pp,p,mp,mf,f,ff/*,fff,ffff,fffff,ffffff, sf,sfp,sfpp,fp,rf,rfz,sfz,sffz,fz,n,pf,sfzp*/ }
+pub type Dynamics = String;
 #[derive(Debug)] pub enum Wedge { Crescendo, Diminuendo, Stop, Continue }
 #[derive(Debug)] pub enum DirectionType {
 	Metronome{
@@ -32,7 +33,7 @@
 		size: u8,
 	},
 	Words(String),
-	Dynamics(/*Dynamics*/String),
+	Dynamics(Dynamics),
 	Wedge(Wedge)
 }
 #[derive(Debug, Clone, Copy, derive_more::FromStr)] pub struct Staff(pub /*1-*/u8);
