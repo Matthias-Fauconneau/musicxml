@@ -5,7 +5,6 @@ impl MeasureLayoutContext<'_> {
 	#[throws] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { match direction {
 		DirectionType::Dynamics(dynamic) => {
 			let text = format!("{dynamic:?}");
-			let font = self.measure.sheet.font;
 			let face = ui::text::default_font()[0]; // TODO: italic
 			use ui::{graphic, text::{Plain, View, layout, Glyph, unicode_segmentation::UnicodeSegmentation}};
 			let text = View::new_with_face(&face, Plain(text));

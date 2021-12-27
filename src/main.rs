@@ -1,4 +1,4 @@
-#![feature(once_cell,let_else,crate_visibility_modifier,derive_default_enum/*,nll*/)]
+#![feature(once_cell,let_else,crate_visibility_modifier,derive_default_enum,closure_track_caller/*,nll*/)]
 pub use fehler::throws;
 crate type Error = Box<dyn std::error::Error>;
 //mod xml;
@@ -24,26 +24,24 @@ mod xml {
 }
 use xml::{Node, has};
 trait FromStr { fn from_str(s: &str) -> Self; }
-impl<T:std::str::FromStr> FromStr for T where <T as std::str::FromStr>::Err: std::fmt::Debug { fn from_str(s: &str) -> Self { s.parse().unwrap() } }
+impl<T:std::str::FromStr> FromStr for T where <T as std::str::FromStr>::Err: std::fmt::Debug { #[track_caller] fn from_str(s: &str) -> Self { s.parse().expect(s) } }
 fn try_attribute<T:FromStr>(e: Node<'_, '_>, name: &'static str) -> Option<T> { Some(FromStr::from_str(e.attribute(name)?)) }
 fn attribute<T:FromStr>(e: Node<'_, '_>, name: &'static str) -> T { try_attribute(e, name).unwrap() }
-impl<T:FromStr> FromElement for T { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { FromStr::from_str(e.text().unwrap()) } }
-fn find<T:FromElement>(e: Node<'_, '_>, name: &'static str) -> T { T::from(xml::find(e, name).unwrap()) }
+impl<T:FromStr> FromElement for T { #[track_caller] fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { FromStr::from_str(e.text().unwrap()/*expect(&format!("{e:?}"))*/) } }
+#[track_caller] fn find<T:FromElement>(e: Node<'_, '_>, name: &'static str) -> T { T::from(xml::find(e, name).expect(name)) }
 fn option<T:FromElement>(e: Node<'_, '_>, name: &'static str) -> Option<T> { Some(T::from(xml::find(e, name)?)) }
-fn seq<T:FromElement>(e: Node<'_, '_>) -> Box<[T]> { e.children().map(|e| T::from(e)).collect() }
+fn seq<T:FromElement>(e: Node<'_, '_>) -> Box<[T]> { e.children().filter(|e| e.is_element()).map(|e| T::from(e)).collect() }
 fn filter<T:FromElement>(e: Node<'_, '_>, name: &'static str) -> Box<[T]> { xml::filter(e, name).map(|e| T::from(e)).collect() }
 
-impl FromElement for ScorePartwise { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self(filter(e, "part")) } }
-impl FromElement for Part { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self(xml::filter(e, "measure").map(|e| seq(e)).collect())} }
 impl FromElement for MusicData { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { use MusicData::*; match e.tag_name().name() {
     "note" => Note(FromElement::from(e)),
-    "backup" => Backup{duration: FromElement::from(e)},
-    "forward" => Forward{duration: FromElement::from(e)},
+    "backup" => Backup(find(e, "duration")),
+    "forward" => Forward(find(e, "duration")),
     "print" => Print,
     "attributes" => Attributes(FromElement::from(e)),
     "direction" => Direction(FromElement::from(e)),
     "barline" => Barline(option(e, "bar-style")),
-    _ => panic!()
+    _ => panic!("{e:?}")
 }}}
 
 impl FromElement for Note { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self{
@@ -91,7 +89,7 @@ impl FromStr for Accidental { fn from_str(s: &str) -> Self { use Accidental::*; 
 
 impl FromElement for TimeModification { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self{
     actual_notes: find(e, "actual-notes"),
-    normal_notes: find(e, "normal_notes"),
+    normal_notes: find(e, "normal-notes"),
 }}}
 
 impl FromElement for Tie { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { use Tie::*; match e.attribute("type").unwrap() {
@@ -114,7 +112,7 @@ impl FromElement for Beam { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { S
 
 impl FromElement for Notation { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { use Notation::*; match e.tag_name().name() {
     "tied" => Tied(attribute(e, "type")),
-    "articulations" => Articulations(seq(e)),
+    "articulations" => Articulations(e.children().filter(|e| e.is_element()).map(|e| FromStr::from_str(e.tag_name().name())).collect()),
     "slur" => Slur(FromElement::from(e)),
     "ornaments" => Ornaments(seq(e)),
     _ => panic!()
@@ -163,7 +161,8 @@ impl FromElement for Ornament { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self
         r#type: e.attribute("type").map(|s| { use TremoloType::*; match s {
             "single" => Single,
             "start" => Start,
-            _ => panic!()
+            "stop" => Stop,
+            _ => panic!("{s}")
         }}).unwrap_or_default(),
         marks: FromElement::from(e)
     },
@@ -224,7 +223,7 @@ impl FromStr for Wedge { fn from_str(s: &str) -> Self { use Wedge::*; match s {
     "continue" => Continue,
     _ => panic!()
 }}}
-impl FromElement for DirectionType { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { use DirectionType::*; match e.tag_name().name() {
+impl FromElement for DirectionType { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { let e = e.first_element_child().unwrap(); use DirectionType::*; match e.tag_name().name() {
     "metronome" => Metronome{
 		beat_unit: find(e, "beat-unit"),
 		per_minute: find(e, "per-minute"),
@@ -236,7 +235,7 @@ impl FromElement for DirectionType { fn from<'t, 'input>(e: Node<'t, 'input>) ->
 	"words" => Words(FromElement::from(e)),
 	"dynamics" => Dynamics(FromElement::from(e)),
 	"wedge" => Wedge(attribute(e, "type")),
-    _ => panic!()
+    e => panic!("{e}")
 }}}
 
 impl FromElement for Direction { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self{
@@ -263,7 +262,7 @@ impl FromStr for BarStyle { fn from_str(s: &str) -> Self { use BarStyle::*; matc
 fn main() -> ui::Result {
     let text = std::fs::read("../Scores/sheet.xml")?;
     let document =  roxmltree::Document::parse(std::str::from_utf8(&text)?)?;
-    let _sheet : ScorePartwise = FromElement::from(document.root_element());
+    let part : Part = xml::filter(xml::find(document.root_element(), "part").unwrap(), "measure").map(|e| seq(e)).collect();
     //let sheet = xml::from_document(&document);
     unimplemented!()
     /*let sheet = &*Box::leak::<'static>(sheet);

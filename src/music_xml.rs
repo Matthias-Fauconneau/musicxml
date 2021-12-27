@@ -57,7 +57,7 @@
 	pub orientation: Orientation,
 }
 #[derive(Debug)] pub enum Articulation { Accent, StrongAccent, Staccato, Tenuto, DetachedLegato, Staccatissimo, Spiccato, Scoop, Plop, Doit, Falloff, BreathMark, Caesura, Stress, Unstress, SoftAccent }
-#[derive(Debug,Default)] pub enum TremoloType { #[default] Single, Start }
+#[derive(Debug,Default)] pub enum TremoloType { #[default] Single, Start, Stop }
 #[derive(Debug)]
 pub enum Ornament {
 	Tremolo{
@@ -109,16 +109,12 @@ pub enum Ornament {
 #[derive(Debug)]
 pub enum MusicData {
 	Note(Note),
-	Backup{
-		duration: u32
-	},
-	Forward{
-		duration: u32
-	},
+	Backup(u32),
+	Forward(u32),
 	Print,
 	Attributes(Attributes),
 	Direction(Direction),
 	Barline(Option<BarStyle>)
 }
-#[derive(Debug)] pub struct Part (Box<[Box<[MusicData]>]>);
-#[derive(Debug)] pub struct ScorePartwise (Box<[Part]>);
+pub type Measure = Box<[MusicData]>;
+pub type Part = Box<[Measure]>;
