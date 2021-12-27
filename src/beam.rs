@@ -1,10 +1,10 @@
 use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
 impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
-	use crate::{music_xml::{NoteType, NoteData, NoteTypeValue, StemDirection}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
+	use crate::{music_xml::{NoteType, Stem}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
 	use {iter::Single, vector::MinMax, ::xy::xy, ui::graphic::{Rect, Parallelogram}};
 	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).reduce(MinMax::minmax).unwrap();
-	let direction = if top-4 > 4-bottom { StemDirection::Down } else { StemDirection::Up };
-	let stem_anchor = if let StemDirection::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
+	let direction = if top-4 > 4-bottom { Stem::Down } else { Stem::Up };
+	let stem_anchor = if let Stem::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
 	let stem_anchor = self.sheet.face.anchor(note_head::black, stem_anchor);
 
 	let beam = beam.iter().scan(self.x, |x, chord| {
@@ -16,8 +16,8 @@ impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &
 	// Heads
 	for &(x, chord) in beam.iter() {
 		for note in chord.iter() {
-			if let Note{staff: Some(staff), r#type: Some(NoteType{value}), content:NoteData::Pitch(pitch), ..} = note {
-				self.push_glyph_at_pitch(x, staves.index(&staff), &pitch, {use {NoteTypeValue::*, note_head::*}; match value { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
+			if let Note{staff: Some(staff), r#type: Some(r#type), pitch: Some(pitch), ..} = note {
+				self.push_glyph_at_pitch(x, staves.index(&staff), &pitch, {use {NoteType::*, note_head::*}; match r#type { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
 			} else { unreachable!() }
 		}
 	}
@@ -38,7 +38,7 @@ impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &
 		let x = x + stem_anchor.x as u32;
 		let staff = chord.staff();
 		let stem_step = chord.stem_step(staves, direction);
-		if let StemDirection::Down = direction { // Bottom Left
+		if let Stem::Down = direction { // Bottom Left
 			self.measure.graphic.rects.push(Rect{min: xy{x: x as i32, y: self.y(staff, top)+stem_anchor.y}, max: xy{x: x as i32 + stem_thickness as i32, y: self.y(staff, stem_step)}});
 		} else { // Top Right
 			self.measure.graphic.rects.push(Rect{min: xy{x: x as i32 - stem_thickness as i32, y: self.y(staff, stem_step)}, max: xy{x: x as i32, y: self.y(staff, bottom)+stem_anchor.y}});
@@ -49,13 +49,13 @@ impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &
 	if let Some(&(x, chord)) = beam.iter().single() {
 		let stem_step = chord.stem_step(staves, direction);
 		let staff = chord.staff();
-		let value = if let StemDirection::Down = direction { chord.first() } else { chord.last() };
-		let flag = if let StemDirection::Down = direction { flag::down } else { flag::up };
-		let flag_anchor = if let StemDirection::Down = direction { Anchor::StemDownSW } else { Anchor::StemUpNW };
-		let value = &value.unwrap().r#type.as_ref().unwrap().value;
-		if value <= &NoteTypeValue::Eighth {
+		let value = if let Stem::Down = direction { chord.first() } else { chord.last() }.unwrap();
+		let flag = if let Stem::Down = direction { flag::down } else { flag::up };
+		let flag_anchor = if let Stem::Down = direction { Anchor::StemDownSW } else { Anchor::StemUpNW };
+		let value = value.r#type.unwrap();
+		if value <= NoteType::Eighth {
 			let xy{x, y: dy} = xy{x: x as i32, y: 0} + self.sheet.face.anchor(flag, flag_anchor);
-			self.push_glyph(x as u32, staff, stem_step, dy, flag::from(flag, NoteTypeValue::Eighth as u32 - *value as u32));
+			self.push_glyph(x as u32, staff, stem_step, dy, flag::from(flag, NoteType::Eighth as u32 - value as u32));
 		}
 	}
 }}
