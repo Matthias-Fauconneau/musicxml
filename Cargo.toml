@@ -2,9 +2,6 @@ package={name='music', version='0.0.0', edition='2021'}
 
 [dependencies]
 fehler='*'
-serde='*'
-serde_derive='*'
-bincode="*"
 roxmltree='*'
 appendlist='*'
 itertools='*'
