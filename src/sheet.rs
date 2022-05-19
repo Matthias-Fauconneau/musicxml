@@ -1,13 +1,13 @@
 #![allow(non_upper_case_globals)]
-use {derive_more::Deref, ttf_parser::Face, crate::{Font, font::{SMuFont, SMuFL::EngravingDefaults}}, ::xy::Rect};
+use {derive_more::Deref, ttf_parser::Face, crate::{Font, font::{SMuFont, SMuFL::EngravingDefaults}}, vector::Rect};
 
-#[derive(Deref)] 
+#[derive(Deref)]
 pub struct Sheet {
 	pub font: Font,
 	#[deref] pub face: &'static Face<'static>,
-	pub engraving_defaults: EngravingDefaults, 
-	pub staff_height: u32, 
-	pub staff_distance: u32 
+	pub engraving_defaults: EngravingDefaults,
+	pub staff_height: u32,
+	pub staff_distance: u32
 }
 impl Sheet {
 	pub fn new_with_face(font: Font, face: &'static Face) -> Self {

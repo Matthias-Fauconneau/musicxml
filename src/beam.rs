@@ -1,7 +1,11 @@
+//use iter::Single;
+pub trait Single: Iterator+Sized { fn single(mut self) -> Option<Self::Item> { self.next().filter(|_| self.next().is_none()) } }
+impl<I:Iterator> Single for I {}
+
 use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
 impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
 	use crate::{music_xml::{NoteType, Stem}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
-	use {iter::Single, vector::MinMax, ::xy::xy, ui::graphic::{Rect, Parallelogram}};
+	use {vector::{MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
 	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).reduce(MinMax::minmax).unwrap();
 	let direction = if top-4 > 4-bottom { Stem::Down } else { Stem::Up };
 	let stem_anchor = if let Stem::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };

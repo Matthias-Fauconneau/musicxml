@@ -29,7 +29,7 @@
     }
 }
 
-use ::xy::{xy, int2};
+use vector::{xy, int2};
 
 pub trait SMuFont {
     fn engraving_defaults() -> SMuFL::EngravingDefaults;

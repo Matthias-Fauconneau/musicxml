@@ -1,4 +1,4 @@
-#![feature(once_cell,let_else,crate_visibility_modifier,derive_default_enum,closure_track_caller/*,nll*/)]
+#![feature(once_cell,let_else,crate_visibility_modifier,closure_track_caller/*,nll*/)]
 pub use fehler::throws;
 crate type Error = Box<dyn std::error::Error>;
 mod music_xml;

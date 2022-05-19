@@ -7,18 +7,14 @@ appendlist='*'
 itertools='*'
 derive-more={package='derive_more', version='*'}
 ttf-parser='*'
-iter={git='https://github.com/Matthias-Fauconneau/iter'}
+#iter={git='https://github.com/Matthias-Fauconneau/iter'}
 num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
-xy={git='https://github.com/Matthias-Fauconneau/xy'}
-ui={git='https://github.com/Matthias-Fauconneau/ui'}
+ui={git='https://github.com/Matthias-Fauconneau/ui', features = ['text']}
 
-[patch.'https://github.com/Matthias-Fauconneau/ui']
-ui={path='../ui'}
-[patch.'https://github.com/Matthias-Fauconneau/piet-gpu']
-piet-gpu-types={path='../piet-gpu/piet-gpu-types'}
-piet-gpu={path='../piet-gpu/piet-gpu'}
-piet-gpu-hal={path='../piet-gpu/piet-gpu-hal'}
-[patch.crates-io]
-ash-window={path='../ash/ash-window'}
-ash={path='../ash/ash'}
+#[patch.'https://github.com/Matthias-Fauconneau/ui']
+#ui={path='../ui'}
+#[patch.'https://github.com/Matthias-Fauconneau/piet-gpu']
+#piet-gpu-types={path='../piet-gpu/piet-gpu-types'}
+#piet-gpu={path='../piet-gpu/piet-gpu'}
+#piet-gpu-hal={path='../piet-gpu/piet-gpu-hal'}

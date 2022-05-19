@@ -1,4 +1,4 @@
-use {::xy::{xy, size}, ui::{Ratio, Graphic, graphic::vertical}, crate::{music_xml::{Measure, MusicData::*}, Font, font::SMuFL::EngravingDefaults}};
+use {vector::{xy, size}, ui::{Ratio, Graphic, graphic::vertical}, crate::{music_xml::{Measure, MusicData::*}, Font, font::SMuFL::EngravingDefaults}};
 pub fn layout(font: Font, measures: &[Measure], size: size) -> Graphic {
 	use crate::{sheet::Sheet, staff::Staff, music::*, measure::{MeasureLayoutContext,MusicLayoutContext}};
 	let sheet = Sheet::new(font);

@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, ui::graphic::{Graphic, Glyph}, ::xy::xy, crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData}};
+use {derive_more::{Deref, DerefMut}, ui::graphic::{Graphic, Glyph}, vector::xy, crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData}};
 
 #[derive(Deref)] pub struct Measure<'t> { #[deref] pub sheet: &'t Sheet, pub graphic: Graphic }
 impl<'t> Measure<'t> {
