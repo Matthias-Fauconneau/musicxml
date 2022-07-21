@@ -1,10 +1,10 @@
-#![feature(once_cell,let_else,crate_visibility_modifier,closure_track_caller/*,nll*/)]
+#![feature(once_cell,let_else,closure_track_caller/*,nll*/)]
 pub use fehler::throws;
-crate type Error = Box<dyn std::error::Error>;
+pub(crate) type Error = Box<dyn std::error::Error>;
 mod music_xml;
 mod music;
-crate type Font = &'static appendlist::AppendList<(String, ui::font::File<'static>)>;
-crate mod font;
+pub(crate) type Font = &'static appendlist::AppendList<(String, ui::font::File<'static>)>;
+pub(crate) mod font;
 mod sheet;
 mod staff;
 mod measure;

@@ -22,7 +22,7 @@ impl Sheet {
 		}
 	}
 	pub fn new(font: Font) -> Self {
-		static face: std::lazy::SyncLazy<ui::font::File<'static>> = std::lazy::SyncLazy::new(|| ui::font::open(std::path::Path::new(&(std::env::var("HOME").unwrap()+"/.local/share/fonts/Bravura.otf"))).unwrap());
+		static face: std::sync::LazyLock<ui::font::File<'static>> = std::sync::LazyLock::new(|| ui::font::open(std::path::Path::new(&(std::env::var("HOME").unwrap()+"/.local/share/fonts/Bravura.otf"))).unwrap());
 	    Self::new_with_face(font, &face)
     }
 	// staff: 0: bass .. 1: treble; step: -8: bottom .. 0: top
