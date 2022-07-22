@@ -1,5 +1,5 @@
 use crate::{music_xml::{Attributes, Clef, Sign, Step, Pitch, Key, Time}, font::SMuFL::{clef, accidental, time_signature}, measure::MeasureLayoutContext, staff::{Staff, IndexMut, StaffRef}};
-impl MeasureLayoutContext<'_> { pub fn attributes(&mut self, staves: &mut [Staff], Attributes{clefs, key, time, ..}: &Attributes) {
+impl MeasureLayoutContext<'_,'_> { pub fn attributes(&mut self, staves: &mut [Staff], Attributes{clefs, key, time, ..}: &Attributes) {
 	for &clef@Clef{staff, sign, ..} in clefs.iter() {
 		let mut staff = staves.index_mut(&staff);
 		staff.clef = Some(clef);

@@ -1,7 +1,7 @@
 use {vector::xy, fehler::throws, crate::Error,
 	crate::music_xml::{Direction, DirectionType, UpDownStopContinue},
 	crate::{font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut},measure::MeasureLayoutContext}};
-impl MeasureLayoutContext<'_> {
+impl MeasureLayoutContext<'_,'_> {
 	#[throws] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { match direction {
 		DirectionType::Dynamics(dynamic) => {
 			let face = ui::text::default_font()[0]; // TODO: italic
@@ -13,7 +13,7 @@ impl MeasureLayoutContext<'_> {
 				self.measure.graphic.glyphs.push(graphic::Glyph{top_left: xy{
 					x: (self.x+dx) as i32 + face.glyph_hor_side_bearing(id).unwrap() as i32,
 					y: -((self.sheet.staff_height/*+self.staff_distance/2*/) as i32),
-				}, face, id, scale: scale.into()});
+				}, face, id, scale});
 			}
 		},
 		DirectionType::Metronome{..} => {

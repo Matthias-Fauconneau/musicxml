@@ -3,7 +3,7 @@ pub trait Single: Iterator+Sized { fn single(mut self) -> Option<Self::Item> { s
 impl<I:Iterator> Single for I {}
 
 use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
-impl MeasureLayoutContext<'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
+impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
 	use crate::{music_xml::{NoteType, Stem}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
 	use {vector::{MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
 	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).reduce(MinMax::minmax).unwrap();

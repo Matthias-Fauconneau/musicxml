@@ -3,7 +3,7 @@ pub use fehler::throws;
 pub(crate) type Error = Box<dyn std::error::Error>;
 mod music_xml;
 mod music;
-pub(crate) type Font = &'static appendlist::AppendList<(String, ui::font::File<'static>)>;
+//pub(crate) type Font<'t> = appendlist::AppendList<(String, ui::font::File<'t>)>;
 pub(crate) mod font;
 mod sheet;
 mod staff;
@@ -263,7 +263,5 @@ fn main() -> ui::Result {
     let text = std::fs::read("../Scores/sheet.xml")?;
     let document =  roxmltree::Document::parse(std::str::from_utf8(&text)?)?;
     let sheet : Part = xml::filter(xml::find(document.root_element(), "part").unwrap(), "measure").map(|e| seq(e)).collect();
-    let sheet = &*Box::leak::<'static>(sheet);
-    let font = &*Box::leak::<'static>(Default::default());
-    ui::run(Box::new(ui::graphic::Widget(Box::new(|size| Ok(layout(font, sheet, size))))))
+    ui::run(&mut ui::graphic::Widget(|size| Ok(layout(/*&Font::default(),*/ &sheet, size))))
 }

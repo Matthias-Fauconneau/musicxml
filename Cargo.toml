@@ -3,18 +3,15 @@ package={name='music', version='0.0.0', edition='2021'}
 [dependencies]
 fehler='*'
 roxmltree='*'
-appendlist='*'
+#appendlist='*'
 itertools='*'
 derive-more={package='derive_more', version='*'}
 ttf-parser='*'
-#iter={git='https://github.com/Matthias-Fauconneau/iter'}
 num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
 ui={git='https://github.com/Matthias-Fauconneau/ui', features = ['text']}
 
-#[patch.'https://github.com/Matthias-Fauconneau/ui']
-#ui={path='../ui'}
-#[patch.'https://github.com/Matthias-Fauconneau/piet-gpu']
-#piet-gpu-types={path='../piet-gpu/piet-gpu-types'}
-#piet-gpu={path='../piet-gpu/piet-gpu'}
-#piet-gpu-hal={path='../piet-gpu/piet-gpu-hal'}
+[patch.'https://github.com/Matthias-Fauconneau/ui']
+ui={path='../ui'}
+[patch.'https://github.com/Matthias-Fauconneau/num']
+num={path='../num'}
