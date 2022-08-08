@@ -1,9 +1,8 @@
-#![feature(once_cell,let_else,closure_track_caller/*,nll*/)]
+#![feature(once_cell,let_else,closure_track_caller)]
 pub use fehler::throws;
 pub(crate) type Error = Box<dyn std::error::Error>;
 mod music_xml;
 mod music;
-//pub(crate) type Font<'t> = appendlist::AppendList<(String, ui::font::File<'t>)>;
 pub(crate) mod font;
 mod sheet;
 mod staff;
@@ -259,9 +258,9 @@ impl FromStr for BarStyle { fn from_str(s: &str) -> Self { use BarStyle::*; matc
     _ => panic!()
 }}}
 
-fn main() -> ui::Result {
+#[throws] fn main() {
     let text = std::fs::read("../Scores/sheet.xml")?;
     let document =  roxmltree::Document::parse(std::str::from_utf8(&text)?)?;
     let sheet : Part = xml::filter(xml::find(document.root_element(), "part").unwrap(), "measure").map(|e| seq(e)).collect();
-    ui::run(&mut ui::graphic::Widget(|size| Ok(layout(/*&Font::default(),*/ &sheet, size))))
+    ui::run(&mut ui::graphic::Widget(|size| Ok(layout(&sheet, size))))?
 }

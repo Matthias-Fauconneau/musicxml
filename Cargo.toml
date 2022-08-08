@@ -3,7 +3,6 @@ package={name='music', version='0.0.0', edition='2021'}
 [dependencies]
 fehler='*'
 roxmltree='*'
-#appendlist='*'
 itertools='*'
 derive-more={package='derive_more', version='*'}
 ttf-parser='*'
@@ -13,5 +12,3 @@ ui={git='https://github.com/Matthias-Fauconneau/ui', features = ['text']}
 
 [patch.'https://github.com/Matthias-Fauconneau/ui']
 ui={path='../ui'}
-[patch.'https://github.com/Matthias-Fauconneau/num']
-num={path='../num'}

@@ -1,9 +1,14 @@
-use {derive_more::{Deref, DerefMut}, ui::graphic::{Graphic, Glyph}, vector::xy, crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData}};
+use {derive_more::{Deref, DerefMut}, vector::xy, ui::graphic::{Graphic, Glyph}};
+use crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData};
 
 #[derive(Deref)] pub struct Measure<'s,'g> { #[deref] pub sheet: &'s Sheet, pub graphic: Graphic<'g> }
 impl<'s> Measure<'s,'_> {
-	fn new(sheet: &'s Sheet) -> Self { Self{sheet, graphic: Graphic::new(Default::default())} }
-	fn last_advance(&self) -> i32 { self.graphic.glyphs.last().map(|g:&Glyph| g.top_left.x + g.face.glyph_hor_advance(g.id).unwrap() as i32).unwrap_or(0) }
+	fn new(sheet: &'s Sheet) -> Self { Self{sheet, graphic: Graphic::new(num::Ratio{num:0,div:0})} }
+	fn last_advance(&self) -> i32 {
+		self.graphic.glyphs.last().map(|g:&Glyph|
+			g.top_left.x + g.face.glyph_hor_advance(g.id).unwrap() as i32
+		).unwrap_or(0)
+	}
 	pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: ttf_parser::GlyphId) {
 		self.graphic.glyphs.push(Glyph{top_left: xy{
 			x: x as i32 + self.sheet.face.glyph_hor_side_bearing(id).unwrap() as i32,
