@@ -5,10 +5,10 @@ fehler='*'
 roxmltree='*'
 itertools='*'
 derive-more={package='derive_more', version='*'}
-ttf-parser='*'
+ttf-parser={version='0.17'} # match ui/rustybuzz
 num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
-ui={git='https://github.com/Matthias-Fauconneau/ui', features = ['text']}
+ui={git='https://github.com/Matthias-Fauconneau/ui', features = ['text','graphic']}
 
 [patch.'https://github.com/Matthias-Fauconneau/ui']
 ui={path='../ui'}
