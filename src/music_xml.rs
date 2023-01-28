@@ -1,3 +1,6 @@
+pub struct Work {
+	pub title: String
+}
 #[derive(Debug, PartialEq, Clone, Copy)] pub enum Mode { Major, Minor }
 #[derive(Debug, PartialEq, Clone, Copy)] pub enum Location { Left, Right, BeforeBarline }
 #[derive(Debug)] pub struct Cancel {
@@ -36,10 +39,10 @@ pub type Dynamics = String;
 	Wedge(Wedge),
 	Words(String),
 }
-#[derive(Debug, Clone, Copy, derive_more::FromStr)] pub struct Staff(pub /*1-*/u8);
+#[derive(Debug, Clone, Copy, derive_more::FromStr, PartialEq)] pub struct Staff(pub /*1-*/u8);
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)] pub enum NoteType { _1024th, _512th, _256th, _128th, _64th, _32th, _16th, Eighth, Quarter, Half, Whole, Breve, Long, Maxima}
 #[derive(Debug,Clone,Copy)] pub enum Tie { Start, Stop }
-#[derive(Debug,Clone,Copy)] pub enum Stem { Down, Up }
+#[derive(Debug,Clone,Copy,PartialEq)] pub enum Stem { Down, Up }
 #[derive(Debug,Clone,Copy)] pub enum Step { C,D,E,F,G,A,B }
 #[derive(Debug,Clone,Copy)] pub struct Pitch {
 	pub step: Step,
@@ -104,7 +107,7 @@ pub enum Ornament {
 	pub clefs: Box<[Clef]>,
 }
 #[derive(Debug)] pub struct Direction {
-	pub direction: DirectionType,
+	pub direction: Option<DirectionType>,
 	pub offset: Option<u16>,
 	pub voice: Option<u8>,
 	pub staff: Option<Staff>,
@@ -115,10 +118,14 @@ pub enum MusicData {
 	Note(Note),
 	Backup(u32),
 	Forward(u32),
-	Print,
 	Attributes(Attributes),
 	Direction(Direction),
 	Barline(Option<BarStyle>)
+	//Print,
 }
 pub type Measure = Box<[MusicData]>;
 pub type Part = Box<[Measure]>;
+pub struct Root {
+	pub work: Work,
+	pub part: Part,
+}

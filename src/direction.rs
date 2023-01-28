@@ -1,8 +1,8 @@
-use {vector::xy, fehler::throws, crate::Error,
+use {vector::xy, fehler::throws,
 	crate::music_xml::{Direction, DirectionType, UpDownStopContinue},
 	crate::{font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut},measure::MeasureLayoutContext}};
 impl MeasureLayoutContext<'_,'_> {
-	#[throws] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { use DirectionType::*; match direction {
+	#[throws(as Option)] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { use DirectionType::*; match direction.as_ref()? {
 		Dynamics(dynamic) => {
 			let face = ui::text::default_font()[0]; // TODO: italic
 			use ui::{graphic, text::{Plain, View, layout, Glyph}};
@@ -11,8 +11,8 @@ impl MeasureLayoutContext<'_,'_> {
 				let scale = num::Ratio{num: 1, div: 3};
 				assert!(face.glyph_bounding_box(id).is_some(), "{dynamic:?}");
 				self.measure.graphic.glyphs.push(graphic::Glyph{top_left: xy{
-					x: (self.x+dx) as i32 + face.glyph_hor_side_bearing(id).unwrap() as i32,
-					y: -((self.sheet.staff_height/*+self.staff_distance/2*/) as i32),
+					x: (self.x+scale*dx) as i32 + face.glyph_hor_side_bearing(id).unwrap() as i32,
+					y: self.y(0, 12),
 				}, face, id, scale});
 			}
 		},

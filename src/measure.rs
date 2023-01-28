@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, vector::xy, ui::graphic::{Graphic, Glyph}};
+use {derive_more::{Deref, DerefMut}, vector::xy, ui::graphic::{GlyphId, Glyph, Graphic}};
 use crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData};
 
 #[derive(Deref)] pub struct Measure<'s,'g> { #[deref] pub sheet: &'s Sheet, pub graphic: Graphic<'g> }
@@ -9,7 +9,7 @@ impl<'s> Measure<'s,'_> {
 			g.top_left.x + g.face.glyph_hor_advance(g.id).unwrap() as i32
 		).unwrap_or(0)
 	}
-	#[track_caller] pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: ttf_parser::GlyphId) {
+	#[track_caller] pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: GlyphId) {
 		self.graphic.glyphs.push(Glyph{top_left: xy{
 			x: x as i32 + self.sheet.face.glyph_hor_side_bearing(id).unwrap() as i32,
 			y: self.sheet.y(staff_index, step) - self.sheet.face.glyph_bounding_box(id).unwrap().y_max as i32 + dy,

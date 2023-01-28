@@ -41,6 +41,7 @@ impl MeasureLayoutContext<'_,'_> {
 					}
 				}
 			}
+			self.advance(0);
 		}
 	}
 }
