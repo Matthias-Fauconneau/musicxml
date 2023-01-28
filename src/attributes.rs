@@ -30,12 +30,12 @@ impl MeasureLayoutContext<'_,'_> {
 		}
 		if let Some(Time{beats, beat_type,..}) = time {
 			let texts : [String; 2] = [beats, beat_type].map(|number| number.to_string().chars().map(time_signature::from).collect::<String>());
-			use ui::text::{Plain, View, layout, Glyph, unicode_segmentation::UnicodeSegmentation};
-			let mut texts : [_; 2] = texts.map(|text| View::new_with_face(&self.measure.sheet.face, Plain(text)));
+			use ui::text::{Plain, View, layout, Glyph};
+			let mut texts : [_; 2] = texts.map(|text| View::with_face(self.measure.sheet.face, Plain(text)));
 			let width = texts.iter_mut().map(|text| text.size().x).max().unwrap();
 			for (text, step) in texts.iter_mut().zip([6,2]) {
 				let x = self.x + (width-text.size().x)/2;
-				for Glyph{x: dx, id, ..} in layout(&text.font, text.data.0.graphemes(true).enumerate()) {
+				for Glyph{x: dx, id, ..} in layout(&text.font, text.data.as_ref()) {
 					for index in 0..staves.len() {
 						self.push_glyph_id(x + dx, index, step, 0, id);
 					}

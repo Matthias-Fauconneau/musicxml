@@ -1,4 +1,4 @@
-use {derive_more::Deref, ttf_parser::Face, crate::font::{SMuFont, SMuFL::EngravingDefaults}, vector::Rect};
+use {derive_more::Deref, vector::Rect, ui::font::Face, crate::font::{SMuFont, SMuFL::EngravingDefaults}};
 
 #[derive(Deref)]
 pub struct Sheet {
@@ -19,8 +19,8 @@ impl Sheet {
 		}
 	}
 	pub fn new() -> Self {
-		#[allow(non_upper_case_globals)] static face: std::sync::LazyLock<ui::font::File<'static>> = std::sync::LazyLock::new(|| ui::font::open(std::path::Path::new(&(std::env::var("HOME").unwrap()+"/.local/share/fonts/Bravura.otf"))).unwrap());
-	    Self::new_with_face(/*font,*/ &face)
+		#[allow(non_upper_case_globals)] static face: std::sync::LazyLock<ui::font::File<'static>> = std::sync::LazyLock::new(|| ui::font::open(std::path::Path::new(&"/usr/share/fonts/OTF/Bravura.otf")).unwrap());
+		Self::new_with_face(&face)
     }
 	// staff: 0: bass .. 1: treble; step: 0: bottom .. 8: top
 	pub fn y(&self, staff: usize, step: i8) -> i32 { - ((staff as u32 * self.staff_distance) as i32) - step as i32 * (self.staff_height/8) as i32 }

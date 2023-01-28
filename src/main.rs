@@ -1,4 +1,4 @@
-#![feature(once_cell,let_else,closure_track_caller)]
+#![feature(once_cell, closure_track_caller)]
 pub use fehler::throws;
 pub(crate) type Error = Box<dyn std::error::Error>;
 mod music_xml;
@@ -24,7 +24,7 @@ use xml::{Node, has};
 trait FromStr { fn from_str(s: &str) -> Self; }
 impl<T:std::str::FromStr> FromStr for T where <T as std::str::FromStr>::Err: std::fmt::Debug { #[track_caller] fn from_str(s: &str) -> Self { s.parse().expect(s) } }
 fn try_attribute<T:FromStr>(e: Node<'_, '_>, name: &'static str) -> Option<T> { Some(FromStr::from_str(e.attribute(name)?)) }
-fn attribute<T:FromStr>(e: Node<'_, '_>, name: &'static str) -> T { try_attribute(e, name).unwrap() }
+#[track_caller] fn attribute<T:FromStr>(e: Node<'_, '_>, name: &'static str) -> T { try_attribute(e, name).expect(name) }
 impl<T:FromStr> FromElement for T { #[track_caller] fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { FromStr::from_str(e.text().unwrap()/*expect(&format!("{e:?}"))*/) } }
 #[track_caller] fn find<T:FromElement>(e: Node<'_, '_>, name: &'static str) -> T { T::from(xml::find(e, name).expect(name)) }
 fn option<T:FromElement>(e: Node<'_, '_>, name: &'static str) -> Option<T> { Some(T::from(xml::find(e, name)?)) }
@@ -113,7 +113,9 @@ impl FromElement for Notation { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self
     "articulations" => Articulations(e.children().filter(|e| e.is_element()).map(|e| FromStr::from_str(e.tag_name().name())).collect()),
     "slur" => Slur(FromElement::from(e)),
     "ornaments" => Ornaments(seq(e)),
-    _ => panic!()
+    "arpeggiate" => Arpeggiate,
+    "fermata" => Fermata,
+    notation => panic!("{notation}")
 }}}
 
 impl FromStr for StartStopContinue { fn from_str(s: &str) -> Self { use StartStopContinue::*; match s {
@@ -151,7 +153,7 @@ impl FromStr for Orientation { fn from_str(s: &str) -> Self { use Orientation::*
 
 impl FromElement for Slur { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self{
     	r#type: attribute(e, "type"),
-	    orientation: attribute(e, "orientation"),
+	    orientation: try_attribute(e, "orientation"),
 }}}
 
 impl FromElement for Ornament { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { use Ornament::*; match e.tag_name().name() {
@@ -164,7 +166,8 @@ impl FromElement for Ornament { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self
         }}).unwrap_or_default(),
         marks: FromElement::from(e)
     },
-    _ => panic!()
+    "mordent" => Mordent,
+    ornament => panic!("{ornament}")
 }}}
 
 impl FromStr for Stem { fn from_str(s: &str) -> Self { use Stem::*; match s {
@@ -231,7 +234,7 @@ impl FromElement for DirectionType { fn from<'t, 'input>(e: Node<'t, 'input>) ->
         r#type: attribute(e, "type"),
 		size: try_attribute(e, "size").unwrap_or(8)
     },
-	"words" => Words(FromElement::from(e)),
+	"words" => Words(/*FromElement::from(e)*/String::new()),
 	"dynamics" => Dynamics(FromStr::from_str(e.first_element_child().unwrap().tag_name().name())),
 	"wedge" => Wedge(attribute(e, "type")),
     e => panic!("{e}")
@@ -261,6 +264,7 @@ impl FromStr for BarStyle { fn from_str(s: &str) -> Self { use BarStyle::*; matc
 #[throws] fn main() {
     let text = std::fs::read("../Scores/sheet.xml")?;
     let document =  roxmltree::Document::parse(std::str::from_utf8(&text)?)?;
+    let title = xml::find(xml::find(document.root_element(), "work").expect("work"), "work-title").expect("work-title").text().expect("text");
     let sheet : Part = xml::filter(xml::find(document.root_element(), "part").unwrap(), "measure").map(|e| seq(e)).collect();
-    ui::run(&mut ui::graphic::Widget(|size| Ok(layout(&sheet, size))))?
+    ui::run(title, &mut ui::graphic::Widget(|size| Ok(layout(&sheet, size))))?
 }

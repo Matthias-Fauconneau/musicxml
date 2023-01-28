@@ -16,7 +16,7 @@ impl<'s> Measure<'s,'_> {
 		}, face: self.sheet.face, id, scale: num::unit})
 	}
 	pub fn push_glyph(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: char) {
-		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(id).unwrap())
+		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(dbg!(id)).unwrap())
 	}
 	pub fn push_glyph_at_pitch(&mut self, x: u32, staff: StaffRef, pitch: &Pitch, id: char) {
 		self.push_glyph(x, staff.index, staff.step(pitch), 0, id)

@@ -36,13 +36,11 @@ pub trait SMuFont {
     fn anchor(&self, glyph: char, anchor: SMuFL::Anchor) -> int2;
 }
 
-mod bravura {
+pub(crate) mod bravura {
     use super::{SMuFont, SMuFL, int2, xy};
 
-	impl SMuFont for ttf_parser::Face<'_> {
-		fn engraving_defaults() -> SMuFL::EngravingDefaults {
-			SMuFL::EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40, beam_thickness: 250}
-		}
+	impl SMuFont for ui::font::Face<'_> {
+		fn engraving_defaults() -> SMuFL::EngravingDefaults { SMuFL::EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40, beam_thickness: 250} }
 		fn anchor(&self, glyph: char, anchor: SMuFL::Anchor) -> int2 {
 			assert_eq!(self.units_per_em(), 1000);
 			use SMuFL::*;

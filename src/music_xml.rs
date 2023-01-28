@@ -55,7 +55,7 @@ pub type Dynamics = String;
 #[derive(Debug)] pub enum Orientation { Over, Under }
 #[derive(Debug)] pub struct Slur {
 	pub r#type: StartStopContinue,
-	pub orientation: Orientation,
+	pub orientation: Option<Orientation>,
 }
 #[derive(Debug)] pub enum Articulation { Accent, StrongAccent, Staccato, Tenuto, DetachedLegato, Staccatissimo, Spiccato, Scoop, Plop, Doit, Falloff, BreathMark, Caesura, Stress, Unstress, SoftAccent }
 #[derive(Debug,Default)] pub enum TremoloType { #[default] Single, Start, Stop }
@@ -64,13 +64,16 @@ pub enum Ornament {
 	Tremolo{
 		r#type: TremoloType,
 		marks: u8,
-	}
+	},
+	Mordent
 }
 #[derive(Debug)] pub enum Notation {
 	Tied(StartStopContinue),
 	Articulations(Box<[Articulation]>),
 	Slur(Slur),
 	Ornaments(Box<[Ornament]>),
+	Arpeggiate,
+	Fermata,
 }
 #[derive(Debug)] pub struct TimeModification {
 	pub actual_notes: u8,
