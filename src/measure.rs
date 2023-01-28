@@ -9,14 +9,14 @@ impl<'s> Measure<'s,'_> {
 			g.top_left.x + g.face.glyph_hor_advance(g.id).unwrap() as i32
 		).unwrap_or(0)
 	}
-	pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: ttf_parser::GlyphId) {
+	#[track_caller] pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: ttf_parser::GlyphId) {
 		self.graphic.glyphs.push(Glyph{top_left: xy{
 			x: x as i32 + self.sheet.face.glyph_hor_side_bearing(id).unwrap() as i32,
 			y: self.sheet.y(staff_index, step) - self.sheet.face.glyph_bounding_box(id).unwrap().y_max as i32 + dy,
 		}, face: self.sheet.face, id, scale: num::unit})
 	}
 	pub fn push_glyph(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: char) {
-		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(dbg!(id)).unwrap())
+		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(id).unwrap())
 	}
 	pub fn push_glyph_at_pitch(&mut self, x: u32, staff: StaffRef, pitch: &Pitch, id: char) {
 		self.push_glyph(x, staff.index, staff.step(pitch), 0, id)

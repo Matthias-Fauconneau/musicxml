@@ -24,17 +24,17 @@
 pub type Dynamics = String;
 #[derive(Debug)] pub enum Wedge { Crescendo, Diminuendo, Stop, Continue }
 #[derive(Debug)] pub enum DirectionType {
-	Metronome{
-		beat_unit: NoteType,
-		per_minute: u16,
-	},
+	Dynamics(Dynamics),
 	OctaveShift{
 		r#type: UpDownStopContinue,
 		size: u8,
 	},
+	Metronome{
+		beat_unit: NoteType,
+		per_minute: u16,
+	},
+	Wedge(Wedge),
 	Words(String),
-	Dynamics(Dynamics),
-	Wedge(Wedge)
 }
 #[derive(Debug, Clone, Copy, derive_more::FromStr)] pub struct Staff(pub /*1-*/u8);
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)] pub enum NoteType { _1024th, _512th, _256th, _128th, _64th, _32th, _16th, Eighth, Quarter, Half, Whole, Breve, Long, Maxima}

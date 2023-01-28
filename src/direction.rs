@@ -2,8 +2,8 @@ use {vector::xy, fehler::throws, crate::Error,
 	crate::music_xml::{Direction, DirectionType, UpDownStopContinue},
 	crate::{font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut},measure::MeasureLayoutContext}};
 impl MeasureLayoutContext<'_,'_> {
-	#[throws] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { match direction {
-		DirectionType::Dynamics(dynamic) => {
+	#[throws] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { use DirectionType::*; match direction {
+		Dynamics(dynamic) => {
 			let face = ui::text::default_font()[0]; // TODO: italic
 			use ui::{graphic, text::{Plain, View, layout, Glyph}};
 			let text = View::with_face(&face, Plain(dynamic.to_string()));
@@ -16,12 +16,7 @@ impl MeasureLayoutContext<'_,'_> {
 				}, face, id, scale});
 			}
 		},
-		DirectionType::Metronome{..} => {
-
-		},
-		DirectionType::Wedge(_) => {
-		},
-		DirectionType::OctaveShift{r#type, size, ..} => {
+		OctaveShift{r#type, size, ..} => {
 			let mut staff = staves.index_mut(&staff.unwrap());
 			match r#type {
 				direction@(UpDownStopContinue::Down|UpDownStopContinue::Up) => {
@@ -40,6 +35,8 @@ impl MeasureLayoutContext<'_,'_> {
 				_ => unimplemented!("{direction:?}")
 			}
 		},
-		_ => panic!("{direction:?}")
+		Metronome{..} => {},
+		Wedge(_) => {},
+		Words(_) => {},
 	}
 }}

@@ -10,6 +10,7 @@ pub fn layout<'g>(measures: &[Measure], size: size) -> Graphic<'g> {
 	graphic.rects.extend(sheet.raster(staves.len(), size.x/scale));
 	let mut position = xy{x:0,y:0};
 	for measure in measures {
+		println!("{measure:?}");
 		let music_data = sort_by_start_time(measure.iter());
 		let music_data = batch_beamed_group_of_notes(music_data);
 		let mut measure = MusicLayoutContext{music_data, layout_context: MeasureLayoutContext::new(&sheet)};
