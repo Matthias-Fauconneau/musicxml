@@ -1,4 +1,4 @@
-#![feature(once_cell, anonymous_lifetime_in_impl_trait)]
+#![feature(once_cell, anonymous_lifetime_in_impl_trait, let_chains,try_blocks, exclusive_range_pattern)]
 pub(crate) type Result<T=(),E=Box<dyn std::error::Error>> = std::result::Result<T,E>;
 mod parse;
 mod music_xml;

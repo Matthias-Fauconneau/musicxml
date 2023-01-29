@@ -1,7 +1,7 @@
 use {vector::{xy, size}, ui::{Ratio, Graphic, graphic::vertical}};
-use crate::{music_xml::{Measure, MusicData::*}, sheet::Sheet, staff::Staff, music::*};
+use crate::{music_xml::{self, MusicData::*}, sheet::Sheet, staff::Staff, music::*, measure::Measure};
 use crate::{measure::{MeasureLayoutContext,MusicLayoutContext}, font::SMuFL::EngravingDefaults};
-pub fn layout<'g>(measures: &[Measure], size: size) -> Graphic<'g> {
+pub fn layout<'g>(measures: &[music_xml::Measure], size: size) -> Graphic<'g> {
 	let sheet = Sheet::new();
 	let EngravingDefaults{thin_barline_thickness, ..} = sheet.engraving_defaults;
 	let scale = Ratio{num: 240, div: sheet.staff_height};
@@ -9,7 +9,7 @@ pub fn layout<'g>(measures: &[Measure], size: size) -> Graphic<'g> {
 	let mut graphic = Graphic::new(scale);
 	graphic.rects.extend(sheet.raster(staves.len(), size.x/scale));
 	let mut position = xy{x:0,y:0};
-	for measure in measures {
+	for measure in &measures[..1] {
 		let music_data = sort_by_start_time(measure.iter());
 		//fn debug<T>(t: T, f: impl Fn(&T, &dyn Fn(&dyn std::fmt::Display))) -> T { f(&t, &|u| println!("{}", u)); t }
 		//use itertools::Itertools;
@@ -45,9 +45,8 @@ pub fn layout<'g>(measures: &[Measure], size: size) -> Graphic<'g> {
 		} else {
 			measure.advance(space / 2);
 		};
-		graphic.rects.extend(measure.graphic.rects.drain(..).map(|mut x| { x.translate(position.signed()); x }));
-		graphic.parallelograms.extend(measure.graphic.parallelograms.drain(..).map(|mut x| { x.translate(position.signed()); x }));
-		graphic.glyphs.extend(measure.graphic.glyphs.drain(..).map(|mut x| { x.translate(position.signed()); x }));
+		let MeasureLayoutContext{measure: Measure{graphic: measure_graphic, ..}, x: measure_x, ..} = measure;
+		graphic.extend(measure_graphic, position.signed());
 		if position.x > 0 {
 			graphic.rects.push(vertical(
 				(position.x - (space / 2)) as i32,
@@ -56,8 +55,7 @@ pub fn layout<'g>(measures: &[Measure], size: size) -> Graphic<'g> {
 				position.y as i32+sheet.y(0, 0)
 			));
 		}
-		position.x += measure.x + (space / 2);
-		break;
+		position.x += measure_x + (space / 2);
 	}
 	graphic
 }

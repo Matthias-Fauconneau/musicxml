@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, vector::{minmax,MinMax}, crate::{music_xml::{self, Clef, Sign, Pitch, Stem, Note}}};
+use {fehler::throws, derive_more::{Deref, DerefMut}, vector::{minmax,MinMax}, crate::{music_xml::{self, Clef, Sign, Pitch, Stem, Note}}};
 
 #[derive(Default, Debug)] pub struct Staff {
 	pub clef: Option<Clef>,
@@ -35,12 +35,12 @@ pub fn bounds(iter: impl IntoIterator<Item=&Note>, staves: &[Staff]) -> Option<M
 
 pub trait Chord {
 	fn staff(&self) -> usize;
-	fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8;
+	fn stem_step(&self, staves: &[Staff], stem: Stem) -> Option<i8>;
 }
 impl Chord for Vec<&Note> {
 	fn staff(&self) -> usize { self.into_iter().next().unwrap().staff.unwrap().into() }
-    fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8 {
-	    let bounds = bounds(self.into_iter().filter(|x| x.has_stem()).copied(), staves).unwrap();
+    #[throws(as Option)] fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8 {
+	    let bounds = bounds(self.into_iter().filter(|x| x.has_stem()).copied(), staves)?;
 		if let Stem::Down = stem { bounds.min - 5 } else { bounds.max + 5 }
     }
 }
