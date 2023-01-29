@@ -1,6 +1,13 @@
 #[allow(non_snake_case)] pub mod SMuFL {
     #![allow(non_upper_case_globals)]
-    pub struct EngravingDefaults {pub staff_line_thickness: u32, pub stem_thickness: u32, pub thin_barline_thickness: u32, pub beam_thickness: u32}
+    pub struct EngravingDefaults {
+		pub staff_line_thickness: u32,
+		pub stem_thickness: u32,
+		pub thin_barline_thickness: u32,
+		pub beam_thickness: u32,
+		pub leger_line_extension : u32,
+		pub leger_line_thickness : u32,
+	}
     #[derive(PartialEq)] pub enum Anchor { StemUpNW, StemDownNW, StemUpSE, StemDownSW }
     pub mod clef {
 	    pub const G : char = '\u{E050}';
@@ -40,7 +47,14 @@ pub(crate) mod bravura {
     use super::{SMuFont, SMuFL, int2, xy};
 
 	impl SMuFont for ui::font::Face<'_> {
-		fn engraving_defaults() -> SMuFL::EngravingDefaults { SMuFL::EngravingDefaults{staff_line_thickness: 32, stem_thickness: 30, thin_barline_thickness: 40, beam_thickness: 250} }
+		fn engraving_defaults() -> SMuFL::EngravingDefaults { SMuFL::EngravingDefaults{
+			staff_line_thickness: 32,
+			stem_thickness: 30,
+			thin_barline_thickness: 40,
+			beam_thickness: 250,
+			leger_line_extension: 200,
+			leger_line_thickness: 40,
+		}}
 		fn anchor(&self, glyph: char, anchor: SMuFL::Anchor) -> int2 {
 			assert_eq!(self.units_per_em(), 1000);
 			use SMuFL::*;

@@ -17,7 +17,7 @@ impl MeasureLayoutContext<'_,'_> {
 			}
 		},
 		OctaveShift{r#type, size, ..} => {
-			let mut staff = staves.index_mut(&staff.unwrap());
+			let mut staff = staves.index_mut(staff.unwrap());
 			match r#type {
 				direction@(UpDownStopContinue::Down|UpDownStopContinue::Up) => {
 					staff.octave = match direction {

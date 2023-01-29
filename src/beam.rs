@@ -2,23 +2,38 @@
 pub trait Single: Iterator+Sized { fn single(mut self) -> Option<Self::Item> { self.next().filter(|_| self.next().is_none()) } }
 impl<I:Iterator> Single for I {}
 
-use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
+use crate::{music_xml::Note, staff::Staff, measure::{Measure, MeasureLayoutContext}, font::SMuFL::EngravingDefaults};
 impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
-	use crate::{music_xml::{NoteType, Stem}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
-	use {vector::{MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
-	let Some(bounds) = beam.iter().filter_map(|chord| chord.bounds(staves)).reduce(MinMax::minmax) else { // Unstemmed notes
-		// Heads
+	use crate::{music_xml::{NoteType, Stem}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, bounds, Chord}};
+	let head = |note:&Note| {use {NoteType::*, note_head::*}; match note.r#type.unwrap() { Breve=>breve, Whole=>whole, Half=>half, _=>black }};
+	use {vector::{reduce_minmax, MinMax, xy}, ui::graphic::{Rect, horizontal, Parallelogram}};
+
+   	let heads = |m:&mut Measure, x: u32, chord:&[&Note]| {
+		for (staff, _) in staves.iter().enumerate() {
+			let mut leger = |step| {
+				let EngravingDefaults{leger_line_thickness, leger_line_extension,..} = m.engraving_defaults;
+				m.graphic.rect(horizontal(m.y(staff, step), leger_line_thickness, (x-leger_line_extension)as i32, (x+m.sheet.face.advance(head(chord[0]))+leger_line_extension)as i32))
+			};
+			if let Some(bounds) = bounds(chord.into_iter().filter(|note| usize::from(note.staff.unwrap()) == staff).copied(), staves) {
+				for step in (10..=bounds.max).step_by(2) { leger(step) }
+				for step in (bounds.min..=-2).step_by(2) { leger(step) }
+			}
+		}
+		for note in chord.iter() {
+			let note@Note{staff: Some(staff), pitch: Some(ref pitch), ..} = note else { unreachable!() };
+			m.push_glyph_at_pitch(x, staves.index(*staff), pitch, head(note));
+		}
+	};
+
+	if beam.iter().all(|chord| !chord.into_iter().any(|x| x.has_stem())) { // Unstemmed heads
 		for (i, chord) in beam.iter().enumerate() {
 			let x = self.x + i as u32 * self.space();
-			for note in chord.iter() {
-				if let Note{staff: Some(staff), r#type: Some(r#type), pitch: Some(pitch), ..} = note {
-					self.push_glyph_at_pitch(x, staves.index(&staff), &pitch, {use {NoteType::*, note_head::*}; match r#type { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
-				} else { unreachable!() }
-			}
+			heads(self, x, chord);
 		}
 		return;
 	};
-	let MinMax{min: bottom, max: top} = bounds;
+
+	let MinMax{min: bottom, max: top} = reduce_minmax(beam.iter().filter_map(|chord| bounds(chord.into_iter().filter(|x| x.has_stem()).copied(), staves))).unwrap();
 	let direction = if top-4 > 4-bottom { Stem::Down } else { Stem::Up };
 	let stem_anchor = if let Stem::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
 	let stem_anchor = self.sheet.face.anchor(note_head::black, stem_anchor);
@@ -29,14 +44,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &[Staff], beam
 		Some((stem, chord))
 	}).collect::<Vec<_>>();
 
-	// Heads
-	for &(x, chord) in beam.iter() {
-		for note in chord.iter() {
-			if let Note{staff: Some(staff), r#type: Some(r#type), pitch: Some(pitch), ..} = note {
-				self.push_glyph_at_pitch(x, staves.index(&staff), &pitch, {use {NoteType::*, note_head::*}; match r#type { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
-			} else { unreachable!() }
-		}
-	}
+	for &(x, chord) in beam.iter() { heads(self, x, chord); } // Stemmed heads
 
 	let stem_thickness = self.sheet.engraving_defaults.stem_thickness;
 
@@ -56,9 +64,9 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &[Staff], beam
 		let staff = chord.staff();
 		let stem_step = chord.stem_step(staves, direction);
 		if let Stem::Down = direction { // Bottom Left
-			self.measure.graphic.rects.push(Rect{min: xy{x: x as i32, y: self.y(staff, top)+stem_anchor.y}, max: xy{x: x as i32 + stem_thickness as i32, y: self.y(staff, stem_step)}});
+			self.measure.graphic.rect(Rect{min: xy{x: x as i32, y: self.y(staff, top)+stem_anchor.y}, max: xy{x: x as i32 + stem_thickness as i32, y: self.y(staff, stem_step)}});
 		} else { // Top Right
-			self.measure.graphic.rects.push(Rect{min: xy{x: x as i32 - stem_thickness as i32, y: self.y(staff, stem_step)}, max: xy{x: x as i32, y: self.y(staff, bottom)+stem_anchor.y}});
+			self.measure.graphic.rect(Rect{min: xy{x: x as i32 - stem_thickness as i32, y: self.y(staff, stem_step)}, max: xy{x: x as i32, y: self.y(staff, bottom)+stem_anchor.y}});
 		}
 	}
 

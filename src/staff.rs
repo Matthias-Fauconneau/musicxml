@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, vector::MinMax, crate::{music_xml::{self, Clef, Sign, Pitch, Stem, Note}}};
+use {derive_more::{Deref, DerefMut}, vector::{minmax,MinMax}, crate::{music_xml::{self, Clef, Sign, Pitch, Stem, Note}}};
 
 #[derive(Default, Debug)] pub struct Staff {
 	pub clef: Option<Clef>,
@@ -6,18 +6,18 @@ use {derive_more::{Deref, DerefMut}, vector::MinMax, crate::{music_xml::{self, C
 	pub octave_start_x: Option<u32>
 }
 
-impl From<&music_xml::Staff> for usize { fn from(staff: &music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
+impl From<music_xml::Staff> for usize { fn from(staff: music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
 
 #[derive(Deref)] pub struct StaffRef<'t> { pub index: usize, #[deref] pub staff: &'t Staff }
-pub trait Index { fn index(&self, index: &music_xml::Staff) -> StaffRef; }
+pub trait Index { fn index(&self, index: music_xml::Staff) -> StaffRef; }
 impl Index for [Staff] {
-	fn index(&self, index: &music_xml::Staff) -> StaffRef { let index = index.into(); StaffRef{index, staff: &self[index]} }
+	fn index(&self, index: music_xml::Staff) -> StaffRef { let index = index.into(); StaffRef{index, staff: &self[index]} }
 }
 
 #[derive(Deref, DerefMut)] pub struct StaffMut<'t> { index: usize, #[deref]#[deref_mut] staff: &'t mut Staff }
-pub trait IndexMut { fn index_mut(&mut self, index: &music_xml::Staff) -> StaffMut; }
+pub trait IndexMut { fn index_mut(&mut self, index: music_xml::Staff) -> StaffMut; }
 impl IndexMut for [Staff] {
-	fn index_mut(&mut self, index: &music_xml::Staff) -> StaffMut { let index = index.into(); StaffMut{index, staff: &mut self[index]} }
+	fn index_mut(&mut self, index: music_xml::Staff) -> StaffMut { let index = index.into(); StaffMut{index, staff: &mut self[index]} }
 }
 impl StaffMut<'_> { pub fn as_ref(&self) -> StaffRef { StaffRef{index: self.index, staff: &self.staff} } }
 
@@ -28,23 +28,19 @@ impl Staff {
 }
 
 impl Note {
-    fn step(&self, staves: &[Staff]) -> Option<i8> { self.pitch.map(|pitch| staves.index(&self.staff.unwrap()).step(&pitch)) }
+ 	pub fn step(&self, staves: &[Staff]) -> i8 { self.pitch.map(|pitch| staves.index(self.staff.unwrap()).step(&pitch)).unwrap() }
 }
 
+pub fn bounds(iter: impl IntoIterator<Item=&Note>, staves: &[Staff]) -> Option<MinMax<i8>> { minmax(iter.into_iter()./*filter_*/map(|note| note.step(staves))) }
+
 pub trait Chord {
-	//fn r#type() -> Option<NoteType>;
 	fn staff(&self) -> usize;
-    fn bounds(&self, staves: &[Staff]) -> Option<MinMax<i8>>;
-    fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8;
+	fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8;
 }
 impl Chord for Vec<&Note> {
-	//fn r#type() -> Option<NoteType> { self.iter()}
-	fn staff(&self) -> usize { (&self.first().unwrap().staff.unwrap()).into() }
-    #[track_caller] fn bounds(&self, staves: &[Staff]) -> Option<MinMax<i8>> {
-        self.iter().filter(|x| x.has_stem()).filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).reduce(MinMax::minmax)
-    }
+	fn staff(&self) -> usize { self.into_iter().next().unwrap().staff.unwrap().into() }
     fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8 {
-	    let bounds = self.bounds(staves).unwrap();
-	    if let Stem::Down = stem { bounds.min - 5 } else { bounds.max + 5 }
+	    let bounds = bounds(self.into_iter().filter(|x| x.has_stem()).copied(), staves).unwrap();
+		if let Stem::Down = stem { bounds.min - 5 } else { bounds.max + 5 }
     }
 }
