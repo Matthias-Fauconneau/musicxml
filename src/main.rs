@@ -17,5 +17,6 @@ mod layout; use layout::layout;
 fn main() -> Result {
     let music = parse_utf8(&std::fs::read("../Scores/sheet.xml")?)?;
     println!("{}", itertools::Itertools::format(music.part[0].iter(), "\n"));
+    layout(&music.part, vector::xy{x: 3840, y: 2400});
     ui::run(&music.work.title, &mut ui::graphic::Widget(|size| Ok(layout(&music.part, size))))
 }

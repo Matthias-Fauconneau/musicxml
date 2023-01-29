@@ -39,7 +39,7 @@ pub trait Chord {
 impl Chord for Vec<&Note> {
 	fn staff(&self) -> usize { (&self.first().unwrap().staff.unwrap()).into() }
     #[track_caller] fn bounds(&self, staves: &[Staff]) -> MinMax<i8> {
-        self.iter().filter(|x| x.has_stem()).filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).reduce(MinMax::minmax).unwrap()
+        self.iter()/*.filter(|x| x.has_stem())*/.filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).reduce(MinMax::minmax).unwrap()
     }
     fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8 {
 	    let bounds = self.bounds(staves);

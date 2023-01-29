@@ -10,13 +10,18 @@ pub fn layout<'g>(measures: &[Measure], size: size) -> Graphic<'g> {
 	graphic.rects.extend(sheet.raster(staves.len(), size.x/scale));
 	let mut position = xy{x:0,y:0};
 	for measure in measures {
-		let music_data = sort_by_start_time(measure.iter());
-		let music_data = batch_beamed_group_of_notes(music_data);
+		//fn debug<T: std::fmt::Display>(t: T) -> T { println!("{t}"); t }
+		fn debug<T>(t: T, f: impl Fn(&T, &dyn Fn(&dyn std::fmt::Display))) -> T { f(&t, &|u| println!("{}", u)); t }
+		use itertools::Itertools;
+		//fn debug<T: std::fmt::Display>(t: Box<[T]>) -> Box<[T]> { f(t.iter().format(" ")) }
+		//fn debug<T: std::fmt::Display>(t: Vec<Vec<T>>) -> Vec<Vec<T>> { f(t.iter().format_with("|", |e,f| f(&e.iter().format(" ")))) }
+		let music_data = debug(sort_by_start_time(measure.iter()), |t,f| {  f(&t.iter().map(|(_,d)| d).format(" ")) });
+		let music_data = batch_beamed_group_of_notes(music_data.iter().copied());
 		let mut measure = MusicLayoutContext{music_data, layout_context: MeasureLayoutContext::new(&sheet)};
 		while let Some((_, _, music_data)) = measure.next() {
 			use BeamedMusicData::{Beam, MusicData};
 			match music_data {
-				Beam(beam) => measure.beam(&staves, &beam),
+				Beam(beam) => measure.beam(&staves, &debug(beam, |t,f| f(&t.iter().format_with("|", |e,f| f(&e.iter().format(" ")))))),
 				MusicData(music_data) => match music_data {
 					Backup(_) => {},
 					Attributes(attributes) => measure.attributes(&mut staves, attributes),

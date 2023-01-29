@@ -5,13 +5,13 @@ fehler='*'
 roxmltree='*'
 itertools='*'
 derive-more={package='derive_more', version='*'}
-#ttf-parser={version='0.17'} # match ui/rustybuzz
 num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
-syntactic-for='*'
 ui={git='https://github.com/Matthias-Fauconneau/ui', features = ['text','graphic']}
 
-[patch.'https://github.com/Matthias-Fauconneau/image']
-image={path='../image'}
+[patch.'https://github.com/Matthias-Fauconneau/vector']
+vector={path='../vector'}
+#[patch.'https://github.com/Matthias-Fauconneau/image']
+#image={path='../image'}
 [patch.'https://github.com/Matthias-Fauconneau/ui']
 ui={path='../ui'}
