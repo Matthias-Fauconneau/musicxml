@@ -6,7 +6,19 @@ use crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext};
 impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &[Staff], beam: &[Vec<&Note>]) {
 	use crate::{music_xml::{NoteType, Stem}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}, staff::{Index, Chord}};
 	use {vector::{MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
-	let MinMax{min: bottom, max: top} = beam.iter().map(|chord| chord.bounds(staves)).reduce(MinMax::minmax).unwrap();
+	let Some(bounds) = beam.iter().filter_map(|chord| chord.bounds(staves)).reduce(MinMax::minmax) else { // Unstemmed notes
+		// Heads
+		for (i, chord) in beam.iter().enumerate() {
+			let x = self.x + i as u32 * self.space();
+			for note in chord.iter() {
+				if let Note{staff: Some(staff), r#type: Some(r#type), pitch: Some(pitch), ..} = note {
+					self.push_glyph_at_pitch(x, staves.index(&staff), &pitch, {use {NoteType::*, note_head::*}; match r#type { Breve=>breve, Whole=>whole, Half=>half, _=>black }});
+				} else { unreachable!() }
+			}
+		}
+		return;
+	};
+	let MinMax{min: bottom, max: top} = bounds;
 	let direction = if top-4 > 4-bottom { Stem::Down } else { Stem::Up };
 	let stem_anchor = if let Stem::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
 	let stem_anchor = self.sheet.face.anchor(note_head::black, stem_anchor);
@@ -39,6 +51,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &[Staff], beam
 
 	//float opacity = allTied(beam[0]) ? 1./2 : 1;
 	for (x, chord) in beam.iter() { // Stem
+		//if chord.r#type() >= Note::Whole
 		let x = x + stem_anchor.x as u32;
 		let staff = chord.staff();
 		let stem_step = chord.stem_step(staves, direction);

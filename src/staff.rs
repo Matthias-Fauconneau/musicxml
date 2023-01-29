@@ -32,17 +32,19 @@ impl Note {
 }
 
 pub trait Chord {
+	//fn r#type() -> Option<NoteType>;
 	fn staff(&self) -> usize;
-    fn bounds(&self, staves: &[Staff]) -> MinMax<i8>;
+    fn bounds(&self, staves: &[Staff]) -> Option<MinMax<i8>>;
     fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8;
 }
 impl Chord for Vec<&Note> {
+	//fn r#type() -> Option<NoteType> { self.iter()}
 	fn staff(&self) -> usize { (&self.first().unwrap().staff.unwrap()).into() }
-    #[track_caller] fn bounds(&self, staves: &[Staff]) -> MinMax<i8> {
-        self.iter()/*.filter(|x| x.has_stem())*/.filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).reduce(MinMax::minmax).unwrap()
+    #[track_caller] fn bounds(&self, staves: &[Staff]) -> Option<MinMax<i8>> {
+        self.iter().filter(|x| x.has_stem()).filter_map(|note| note.step(staves)).map(|e|MinMax{min: e, max: e}).reduce(MinMax::minmax)
     }
     fn stem_step(&self, staves: &[Staff], stem: Stem) -> i8 {
-	    let bounds = self.bounds(staves);
+	    let bounds = self.bounds(staves).unwrap();
 	    if let Stem::Down = stem { bounds.min - 5 } else { bounds.max + 5 }
     }
 }

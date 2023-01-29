@@ -40,21 +40,24 @@ pub fn batch_beamed_group_of_notes<'t, I: IntoIterator<Item=(u32,&'t MusicData)>
     it.into_iter().peekable().batching({
 	    let mut beam = None;
 	    let mut chord = None;
-	    move |it| loop {
+	    move |it| {
 			let commit_any_pending_chord_to_beam = |beam: &mut Option<_>, chord: &mut Option<_>|
 				if let Some((t,chord)) = chord.take() { let (_, beam) = beam.get_or_insert((t, Vec::new())); beam.push(chord); };
-			if let Some((_, MusicData::Note(_/*Note{stem: Some(_),..}*/))) = it.peek() {
+			while let Some((_, MusicData::Note(Note{stem: Some(_),..}))) = it.peek() {
 				let Some((t, MusicData::Note(note))) = it.next() else { unreachable!() };
 				if let Note{chord: false, ..} = note { // Next chord
 					commit_any_pending_chord_to_beam(&mut beam, &mut chord);
 				}
 				let (_, chord) = chord.get_or_insert((t, Vec::new()));
 				chord.push(note);
-			} else {
-				commit_any_pending_chord_to_beam(&mut beam, &mut chord);
-				if let Some((t, beam)) = beam.take() { break Some((t, BeamedMusicData::Beam(beam))); }
-				else if let Some((t, music_data)) = it.next() { assert!(!matches!(music_data, MusicData::Note(_))); break Some((t, BeamedMusicData::MusicData(music_data))); }
-				else { assert!(beam.is_none()); assert!(chord.is_none(), "{chord:?}"); break None; }
+			}
+			commit_any_pending_chord_to_beam(&mut beam, &mut chord);
+			assert!(chord.is_none(), "{chord:?}");
+			if let Some((t, beam)) = beam.take() { Some((t, BeamedMusicData::Beam(beam))) }
+			else {
+				assert!(beam.is_none());
+				if let Some((t, music_data)) = it.next() { /*assert!(!matches!(music_data, MusicData::Note(_)));*/ Some((t, BeamedMusicData::MusicData(music_data))) }
+				else { None }
 			}
 	    }
     })
