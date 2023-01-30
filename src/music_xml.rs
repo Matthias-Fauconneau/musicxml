@@ -41,10 +41,10 @@ pub type Dynamics = String;
 }
 #[derive(Debug, Clone, Copy, derive_more::FromStr, PartialEq)] pub struct Staff(pub /*1-*/u8);
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)] pub enum NoteType { _1024th, _512th, _256th, _128th, _64th, _32th, _16th, Eighth, Quarter, Half, Whole, Breve, Long, Maxima}
-#[derive(Debug,Clone,Copy)] pub enum Tie { Start, Stop }
+#[derive(Debug,Clone,Copy,PartialEq)] pub enum Tie { Start, Stop }
 #[derive(Debug,Clone,Copy,PartialEq)] pub enum Stem { Down, Up }
-#[derive(Debug,Clone,Copy)] pub enum Step { C,D,E,F,G,A,B }
-#[derive(Debug,Clone,Copy)] pub struct Pitch {
+#[derive(Debug,Clone,Copy,PartialEq)] pub enum Step { C,D,E,F,G,A,B }
+#[derive(Debug,Clone,Copy,PartialEq)] pub struct Pitch {
 	pub step: Step,
 	pub alter: /*-1..1*/Option<i8>,
 	pub octave: Option</*0-9=4*/u8>,

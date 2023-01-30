@@ -24,9 +24,9 @@ impl Sheet {
     }
 	// staff: 0: bass .. 1: treble; step: 0: bottom .. 8: top
 	pub fn y(&self, staff: usize, step: i8) -> i32 { - ((staff as u32 * self.staff_distance) as i32) - step as i32 * (self.staff_height/8) as i32 }
-	pub fn raster(&self, staves: usize, x1: u32) -> impl Iterator<Item=Rect>+'_ {
+	pub fn raster(&self, staves: usize, x1: u32) -> impl Iterator<Item=(Rect,f32)>+'_ {
 		(0..staves).map(move |staff|
-			(0..=8).step_by(2).map(move |step| ui::graphic::horizontal(self.y(staff, step), self.engraving_defaults.staff_line_thickness, 0, x1 as i32))
+			(0..=8).step_by(2).map(move |step| (ui::graphic::horizontal(self.y(staff, step), self.engraving_defaults.staff_line_thickness, 0, x1 as i32), 1.))
 		).flatten()
 	}
 }

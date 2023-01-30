@@ -52,7 +52,7 @@ pub(crate) mod bravura {
 			stem_thickness: 30,
 			thin_barline_thickness: 40,
 			beam_thickness: 250,
-			leger_line_extension: 200,
+			leger_line_extension: 100,
 			leger_line_thickness: 40,
 		}}
 		fn anchor(&self, glyph: char, anchor: SMuFL::Anchor) -> int2 {

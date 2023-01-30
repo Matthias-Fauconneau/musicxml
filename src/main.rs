@@ -1,9 +1,10 @@
-#![feature(once_cell, anonymous_lifetime_in_impl_trait, let_chains,try_blocks, exclusive_range_pattern)]
+#![feature(let_chains, anonymous_lifetime_in_impl_trait, once_cell, iterator_try_reduce)]
 pub(crate) type Result<T=(),E=Box<dyn std::error::Error>> = std::result::Result<T,E>;
 mod parse;
 mod music_xml;
 mod parse_music_xml; use parse_music_xml::parse_utf8; // impl FromElement for MusicXML
 mod display_music_xml; // impl Display for MusicXML
+pub fn list<T>(iter: impl std::iter::IntoIterator<Item=T>) -> Box<[T]> { iter.into_iter().collect() }
 mod music;
 pub(crate) mod font;
 mod sheet;
@@ -16,7 +17,7 @@ mod layout; use layout::layout;
 
 fn main() -> Result {
     let music = parse_utf8(&std::fs::read("../Scores/sheet.xml")?)?;
-    println!("{}", itertools::Itertools::format(music.part[0].iter(), "\n"));
+    use itertools::Itertools; println!("|{}|", music.part[..2].iter().format_with("|\n|",|e,f| f(&e.iter().format("\t"))));
     layout(&music.part, vector::xy{x: 3840, y: 2400});
     ui::run(&music.work.title, &mut ui::graphic::Widget(|size| Ok(layout(&music.part, size))))
 }

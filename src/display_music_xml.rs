@@ -28,7 +28,7 @@ impl Display for Note { fn fmt(&self, f: &mut Formatter) -> Result {
     //assert_eq!(self.duration, Some(4));
     //assert_eq!(self.voice, Some(1));
     //assert_eq!(self.r#type, Some(NoteType::Half));
-    {use NoteType::*; write!(f, "{}", match self.r#type.unwrap() { Half=>".", Whole=>"O", _=>unimplemented!()})?}
+    {use NoteType::*; write!(f, "{}", match self.r#type.unwrap() { Quarter=>".", Half=>"o", Whole=>"O", t=>unimplemented!("{t:?}")})?}
 	assert!(self.accidental.is_none());
     assert!(self.time_modification.is_none());
     assert!(self.dot == 0);
@@ -46,10 +46,8 @@ impl Display for MusicData { fn fmt(&self, f: &mut Formatter) -> Result {use Mus
     Attributes(s) => Display::fmt(s, f),
     Direction(s) => Display::fmt(s, f),
 	Note(s) => Display::fmt(s, f),
-	/*Backup(u32),
-	Forward(u32),
-	Barline(Option<BarStyle>)*/
-    _ => Debug::fmt(self, f)
+	Backup(_) => write!(f, "|\t-\t|"),
+    _ => panic!("{self:?}")
 }}}
 
 //impl Display for Measure { fn fmt(&self, f: &mut Formatter) -> Result { write!(f, "{}", self.iter().format("\n")) } }

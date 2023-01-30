@@ -13,7 +13,7 @@ impl MeasureLayoutContext<'_,'_> {
 				self.measure.graphic.glyphs.push(graphic::Glyph{top_left: xy{
 					x: (self.x+scale*dx) as i32 + face.glyph_hor_side_bearing(id).unwrap() as i32,
 					y: self.y(0, 12),
-				}, face, id, scale});
+				}, face, id, scale, style: 1.});
 			}
 		},
 		OctaveShift{r#type, size, ..} => {
@@ -29,8 +29,7 @@ impl MeasureLayoutContext<'_,'_> {
 				},
 				UpDownStopContinue::Stop => {
 					let EngravingDefaults{staff_line_thickness, ..} = self.engraving_defaults;
-					let line = ui::graphic::horizontal(-((self.sheet.staff_height+self.staff_distance/3) as i32), staff_line_thickness, staff.octave_start_x.unwrap() as i32, self.x as i32);
-					self.graphic.rects.push(line);
+					self.measure.graphic.horizontal(-((self.staff_height+self.staff_distance/3) as i32), staff_line_thickness, staff.octave_start_x.unwrap() as i32, self.x as i32, 1.);
 				}
 				_ => unimplemented!("{direction:?}")
 			}

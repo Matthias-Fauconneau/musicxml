@@ -4,11 +4,11 @@ use crate::{measure::MeasureLayoutContext, staff::{Staff, IndexMut, StaffRef}};
 impl MeasureLayoutContext<'_,'_> {
 	pub fn attributes(&mut self, staves: &mut [Staff], Attributes{clefs, key, time, ..}: &Attributes) {
 		for &clef@Clef{staff, sign, ..} in clefs.iter() {
-			let mut staff = staves.index_mut(staff);
+			let ref mut staff = staves.index_mut(staff);
 			staff.clef = Some(clef);
 			let (glyph, step) = {use Sign::*; match sign { G=>(clef::G, Step::G), F=>(clef::F, Step::F) }};
 			let x = self.x;
-			self.push_glyph_at_pitch(x, staff.as_ref(), &Pitch::new(&clef, &step), glyph);
+			self.push_glyph_at_pitch(x, staff.as_ref(), &Pitch::new(&clef, &step), glyph, 1.);
 		}
 		self.advance(0);
 		if let &Some(Key{fifths,..}) = key {
@@ -17,7 +17,7 @@ impl MeasureLayoutContext<'_,'_> {
 					for step in steps {
 						for (index, Staff{clef, ..}) in staves.iter().enumerate() {
 							let x = self.x;
-							self.push_glyph_at_pitch(x, StaffRef{index, staff: &Staff{clef: *clef, ..Staff::default()}}, &Pitch::new(clef.as_ref().unwrap(), step), symbol);
+							self.push_glyph_at_pitch(x, StaffRef{index, staff: &Staff{clef: *clef, ..Staff::default()}}, &Pitch::new(clef.as_ref().unwrap(), step), symbol, 1.);
 						}
 					}
 				};
@@ -37,7 +37,7 @@ impl MeasureLayoutContext<'_,'_> {
 				let x = self.x + (width-text.size().x)/2;
 				for Glyph{x: dx, id, ..} in layout(&text.font, text.data.as_ref()) {
 					for index in 0..staves.len() {
-						self.push_glyph_id(x + dx, index, step, 0, id);
+						self.push_glyph_id(x + dx, index, step, 0, id, 1.);
 					}
 				}
 			}
