@@ -4,13 +4,13 @@ use crate::{measure::{MeasureLayoutContext,MusicLayoutContext}, font::SMuFL::Eng
 pub fn layout<'t, 'g>(measures: &'t [music_xml::Measure], size: size) -> Graphic<'g> {
 	let sheet = Sheet::new();
 	let EngravingDefaults{thin_barline_thickness, ..} = sheet.engraving_defaults;
-	let scale = Ratio{num: 240, div: sheet.staff_height};
+	let scale = Ratio{num: 150, div: sheet.staff_height};
 	let mut staves = <[Staff; 2]>::default();
 	let mut graphic = Graphic::new(scale);
 	graphic.rects.extend(sheet.raster(staves.len(), size.x/scale));
 	let mut position = xy{x:0,y:0};
-	for measure in &measures[..2] {
-		fn debug<T>(t: T, f: impl Fn(&T, &dyn Fn(&dyn std::fmt::Display))) -> T { f(&t, &|u| println!("{}", u)); t } use itertools::Itertools;
+	for measure in measures {
+		//fn debug<T>(t: T, f: impl Fn(&T, &dyn Fn(&dyn std::fmt::Display))) -> T { f(&t, &|u| println!("{}", u)); t } use itertools::Itertools;
 		let music_data = sort_by_start_time(measure.iter());
 		//let music_data = debug(sort_by_start_time(measure.iter()), |t,f| {  f(&t.iter().map(|(_,d)| d).format(" ")) });
 		let music_data = beam(music_data.iter().copied());
@@ -18,14 +18,15 @@ pub fn layout<'t, 'g>(measures: &'t [music_xml::Measure], size: size) -> Graphic
 		while let Some((_, _, music_data)) = measure.next() {
 			use BeamedMusicData::{Beam, MusicData};
 			match music_data {
-				//Beam(beam) => measure.beam(&staves, &beam),
-				Beam(beam) => measure.beam(&mut staves, &debug(beam, |t,f| f(&t.iter().format_with("|", |e,f| f(&e.iter().format(" ")))))),
+				Beam(beam) => measure.beam(&mut staves, &beam),
+				//Beam(beam) => measure.beam(&mut staves, &debug(beam, |t,f| f(&t.iter().format_with("|", |e,f| f(&e.iter().format(" ")))))),
 				MusicData(music_data) => match music_data {
 					//Note(note) => measure.beam(&staves, &[vec![note]]),
 					Backup(_) => {},
 					Attributes(attributes) => measure.attributes(&mut staves, attributes),
 					Direction(direction) => { measure.direction(&mut staves, direction); },
-					_ => unimplemented!(),
+					Barline(_) => {},
+					_ => unimplemented!("{music_data}"),
 				}
 			}
 		}
@@ -35,7 +36,7 @@ pub fn layout<'t, 'g>(measures: &'t [music_xml::Measure], size: size) -> Graphic
 			position.x = 0;
 			position.y += 2*sheet.staff_distance;
 			graphic.rects.extend(sheet.raster(staves.len(), size.x/scale).map(|(mut x, style)| { x.translate(xy{x:0, y: position.y as i32}); (x, style) }));
-			graphic.vertical(size.x as i32, thin_barline_thickness, position.y as i32+sheet.y(staves.len()-1, 8), position.y as i32+sheet.y(0, 0), 1.);
+			//graphic.vertical(size.x as i32, thin_barline_thickness, position.y as i32+sheet.y(staves.len()-1, 8), position.y as i32+sheet.y(0, 0), 1.);
 		} else {
 			measure.advance(space / 2);
 		};

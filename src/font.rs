@@ -62,7 +62,7 @@ pub(crate) mod bravura {
 			let anchors = [
 				(note_head::black, vec!(
 					(StemDownNW, xy{x: 0, y: 42}),
-					(StemUpSE, xy{x: self.glyph_bounding_box(self.glyph_index(SMuFL::note_head::black).unwrap()).unwrap().x_max as i32-1, y: -42})
+					(StemUpSE, xy{x: self.bbox(self.glyph_index(SMuFL::note_head::black).unwrap()).unwrap().max.x-1, y: -42})
 				)),
 				(flag::up, vec!((StemUpNW, xy{x: 0, y:10}))),
 				(flag::down, vec!((StemDownSW, xy{x: 0, y:-33})))

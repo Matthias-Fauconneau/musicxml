@@ -39,21 +39,32 @@ pub fn beam<'t, I: IntoIterator<Item=(u32,&'t MusicData)>>(it: I) -> impl Iterat
 	    let mut beam = None; // All consecutive groups of notes (cut by non-note music data (and TODO: beats))
 	    let mut chord = None; // All notes starting at the same time (across staves)
 	    move |it| {
-			let commit_any_pending_chord_to_beam = |beam: &mut Option<_>, chord: &mut Option<(_,Vec<_>)>| {
-				if let Some((t,chord)) = chord.take() { let (_, beam) = beam.get_or_insert((t, Vec::new())); beam.push(chord.into_boxed_slice()); }
-			};
-			while let Some((_, MusicData::Note(_))) = it.peek() {
-				let Some((t, MusicData::Note(note))) = it.next() else { unreachable!() };
-				if let Some((chord_t,_)) = chord && chord_t != t { // Next chord
-					assert!(chord_t < t);
-					commit_any_pending_chord_to_beam(&mut beam, &mut chord);
+			let commit_any_matching_pending_chord_to_beam = |beam: &mut Option<(_,Vec<Box<[&'t Note]>>)>, chord: &mut Option<(_,Vec<&'t Note>)>| {
+				if let Some((_,beam)) = beam.as_ref() && !beam.is_empty() {
+					if beam.iter().any(|chord| chord.iter().all(|note| note.r#type.unwrap() >= NoteType::Quarter)) { return; }
+					let Some((_, chord)) = chord.as_ref() else {return;};
+					if chord.iter().all(|note| note.r#type.unwrap() >= NoteType::Quarter) { return; }
 				}
+				let Some((t,chord)) = chord.take() else {return;};
+				if chord.is_empty() { return; }
+				let (_, beam) = beam.get_or_insert((t, Vec::new()));
+				beam.push(chord.into_boxed_slice());
+			};
+			while let Some((peek_t, MusicData::Note(_))) = it.peek() {
+				if let Some((chord_t,_)) = chord && chord_t != *peek_t { // Next chord
+					assert!(chord_t < *peek_t);
+					commit_any_matching_pending_chord_to_beam(&mut beam, &mut chord);
+					if chord.is_some() { break; } // Cut beam
+					assert!(chord.is_none());
+				}
+				let Some((t, MusicData::Note(note))) = it.next() else { unreachable!() };
 				let (_, chord) = chord.get_or_insert((t, Vec::new()));
 				chord.push(note);
 			}
-			commit_any_pending_chord_to_beam(&mut beam, &mut chord);
-			if let Some((t, beam)) = beam.take() { Some((t, BeamedMusicData::Beam(beam.into_boxed_slice()))) }
+			commit_any_matching_pending_chord_to_beam(&mut beam, &mut chord);
+			if let Some((t, beam)) = beam.take() { assert!(!beam.is_empty()); Some((t, BeamedMusicData::Beam(beam.into_boxed_slice()))) }
 			else {
+				assert!(chord.is_none());
 				assert!(beam.is_none());
 				if let Some((t, music_data)) = it.next() { assert!(!matches!(music_data, MusicData::Note(_))); Some((t, BeamedMusicData::MusicData(music_data))) }
 				else { None }

@@ -28,18 +28,20 @@ impl Display for Note { fn fmt(&self, f: &mut Formatter) -> Result {
     //assert_eq!(self.duration, Some(4));
     //assert_eq!(self.voice, Some(1));
     //assert_eq!(self.r#type, Some(NoteType::Half));
-    {use NoteType::*; write!(f, "{}", match self.r#type.unwrap() { Quarter=>".", Half=>"o", Whole=>"O", t=>unimplemented!("{t:?}")})?}
+    {use NoteType::*; write!(f, "{}", match self.r#type.unwrap() { Eighth=>",", Quarter=>".", Half=>"o", Whole=>"O", t=>unimplemented!("{t:?}")})?}
 	assert!(self.accidental.is_none());
     assert!(self.time_modification.is_none());
-    assert!(self.dot == 0);
+    for _ in 0..self.dot { write!(f, ".")?; }
     if !self.ties.is_empty() { write!(f, "-")?; }
-	assert!(self.beams.is_empty());
+	//assert!(self.beams.is_empty());
 	//self.notations
 	//assert_eq!(self.staff, Some(Staff(1)));
     //assert_eq!(self.stem, Some(Stem::Down));
     if self.chord { write!(f, "+")?; }
     assert!(!self.grace);
-    Display::fmt(self.pitch.as_ref().unwrap(), f)
+    if let Some(pitch) = self.pitch { write!(f, "{}", pitch)?; }
+    else { write!(f, "-")?; } // pause
+    Ok(())
 }}
 
 impl Display for MusicData { fn fmt(&self, f: &mut Formatter) -> Result {use MusicData::*; match self {

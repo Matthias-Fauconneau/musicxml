@@ -30,23 +30,23 @@ impl Staff {
 
 impl Note {
 	pub fn staff(&self) -> usize { self.staff.unwrap().into() }
- 	pub fn step(&self, staves: &[Staff]) -> i8 { staves[self.staff()].step(&self.pitch.unwrap()) }
+ 	#[throws(as Option)] pub fn step(&self, staves: &[Staff]) -> i8 { staves[self.staff()].step(&self.pitch?) }
 }
 
-#[track_caller] pub fn staff(chord: impl IntoIterator<Item=&Note>) -> usize { chord.into_iter().map(|n| n.staff()).try_reduce(|a,b| (a == b).then(|| a)).flatten().unwrap() }
-pub fn minmax(chord: impl IntoIterator<Item=&Note>, staves: &[Staff]) -> Option<MinMax<i8>> { vector::minmax(chord.into_iter().map(|note| note.step(staves))) }
+#[track_caller] pub fn staff(chord: impl IntoIterator<Item=&Note>) -> Option<usize> { chord.into_iter().map(|n| n.staff()).try_reduce(|a,b| (a == b).then(|| a)).flatten() }
+pub fn minmax(chord: impl IntoIterator<Item=&Note>, staves: &[Staff]) -> Option<MinMax<i8>> { vector::minmax(chord.into_iter().filter_map(|note| note.step(staves))) }
 #[throws(as Option)] pub fn stem_step(chord: impl IntoIterator<Item=&Note>, staves: &[Staff], stem: Stem) -> i8 {
 	let bounds = minmax(chord.into_iter().filter(|x| x.has_stem()), staves)?;
 	if let Stem::Down = stem { bounds.min - 5 } else { bounds.max + 5 }
 }
 
 pub trait Chord {
-	fn staff(&self) -> usize;
+	fn staff(&self) -> Option<usize>;
 	fn minmax(&self, staves: &[Staff]) -> Option<MinMax<i8>>;
 	fn stem_step(&self, staves: &[Staff], stem: Stem) -> Option<i8>;
 }
 impl Chord for Box<[&Note]> {
-	#[track_caller] fn staff(&self) -> usize { staff(self.into_iter().copied()) }
+	fn staff(&self) -> Option<usize> { staff(self.into_iter().copied()) }
 	fn minmax(&self, staves: &[Staff]) -> Option<MinMax<i8>> { minmax(self.into_iter().copied(), staves) }
 	fn stem_step(&self, staves: &[Staff], stem: Stem) -> Option<i8> { stem_step(self.into_iter().copied(), staves, stem) }
 }

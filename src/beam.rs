@@ -8,41 +8,39 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 	let head = |note:&Note| {use {NoteType::*, note_head::*}; match note.r#type.unwrap() { Breve=>breve, Whole=>whole, Half=>half, _=>black }};
 	use {crate::list, vector::{reduce_minmax, MinMax, xy}, ui::graphic::{Rect, Parallelogram}, crate::staff::{Index, IndexMut, minmax, Chord}};
 
-	let MinMax{min: bottom, max: top} = reduce_minmax(beam.iter().filter_map(|chord| minmax(chord.into_iter().filter(|x| x.has_stem()).copied(), staves))).unwrap();
+	let beam = list(beam.iter().scan(self.x, |x, chord| {
+		let note = *x;
+		*x += self.space();
+		Some((note, chord))
+	}));
+
+	#[allow(non_upper_case_globals)] const tie: f32 = 1./16.;
+	let style = |staves:&[_], Note{staff, pitch, ties, ..}:&Note| if ties.contains(&Tie::Stop) && staves.index(staff.unwrap()).ties.iter().any(|x| x == &pitch.unwrap()) { tie } else { 1. };
+
+	for (x, chord) in beam.iter() {
+		for note in chord.iter() { // Heads
+			let note@Note{staff: Some(staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
+			self.push_glyph_at_pitch(*x, staves.index(*staff), pitch, head(note), style(staves, note));
+			if note.ties.contains(&Tie::Start) { staves.index_mut(*staff).ties.push(note.pitch.unwrap()) }
+		}
+	}
+
+	assert!(!beam.is_empty()); for (_,chord) in beam.iter() { assert!(!chord.is_empty()); }
+	let Some(MinMax{min: bottom, max: top}) = reduce_minmax(beam.iter().filter_map(|(_,chord)| minmax(chord.iter().filter(|x| x.has_stem()).copied(), staves))) else {return;};
 	let direction = if top-4 > 4-bottom { Stem::Down } else { Stem::Up };
 	let stem_anchor = if let Stem::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
 	let stem_anchor = self.sheet.face.anchor(note_head::black, stem_anchor);
-
-	let beam = list(beam.iter().scan(self.x, |x, chord| {
-		let stem = *x + stem_anchor.x as u32;
-		*x += self.space();
-		Some((stem, chord))
-	}));
-
 	let stem_thickness = self.sheet.engraving_defaults.stem_thickness;
-
-	//float opacity = allTied(beam[0]) ? 1./2 : 1;
-	if let &[(left, first), .., (right, last)] = &*beam && first[0].r#type.unwrap() <= NoteType::Eighth { // Beam (fixme: >2)
-		let right = right + stem_thickness as u32;
-		assert!(first.staff() == last.staff());
-		let staff = first.staff();
-		if let [Some(first),Some(last)] = [first, last].map(|chord| chord.stem_step(staves, direction)) {
-			let [bottom, top] = [min(first,last),max(first,last)];
-			self.measure.graphic.parallelogram(Parallelogram{
-				top_left: xy{x: left as i32, y: self.y(staff, top)},
-				bottom_right: xy{x: right as i32, y: self.y(staff, bottom)},
-				vertical_thickness: self.sheet.engraving_defaults.beam_thickness
-			});
-		}
-	}
+	for (_, chord) in beam.iter() { for note in chord.iter() { assert!(note.time_modification.is_none() /*&& note.dot==0*/); } }
+	let beam = list(beam.iter().map(|(note, chord)| (note + stem_anchor.x as u32, *chord)));
 
 	for (x, chord) in beam.iter() {
 		let x = *x;
 		#[allow(non_upper_case_globals)] const tie: f32 = 1./16.;
 		let style = |staves:&[_], Note{staff, pitch, ties, ..}:&Note| if ties.contains(&Tie::Stop) && staves.index(staff.unwrap()).ties.iter().any(|x| x == &pitch.unwrap()) { tie } else { 1. };
 		for note in chord.iter() { // Heads
-			let note@Note{staff: Some(staff), pitch: Some(ref pitch), ..} = note else { unreachable!() };
-			self.push_glyph_at_pitch(x, staves.index(*staff), pitch, head(note), style(staves, note));
+			let note@Note{staff: Some(staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
+			self.push_glyph_at_pitch(x - stem_anchor.x as u32, staves.index(*staff), pitch, head(note), style(staves, note));
 			if note.ties.contains(&Tie::Start) { staves.index_mut(*staff).ties.push(note.pitch.unwrap()) }
 		}
 		for (staff, _) in staves.iter().enumerate() {
@@ -52,6 +50,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 				let EngravingDefaults{leger_line_thickness, leger_line_extension,..} = self.engraving_defaults;
 				let note = chord[0];
 				let note_size = self.face.bbox(self.face.glyph_index(head(note)).unwrap()).unwrap().size();
+				let x = x - stem_anchor.x as u32;
 				self.measure.graphic.horizontal(self.y(staff, step), leger_line_thickness, x as i32 - leger_line_extension as i32, (x+note_size.x+leger_line_extension) as i32, style(staves, note))
 			};
 			if let Some(MinMax{min,max}) = chord.minmax(staves) {
@@ -68,8 +67,8 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 				self.measure.graphic.rect(Rect{min: xy{x: x as i32 - stem_thickness as i32, y: self.y(staff, top+5)}, max: xy{x: x as i32, y: self.y(staff, bottom)+stem_anchor.y}}, style);
 			}
 			// Flag
-			if let Some(&(x, chord)) = beam.iter().single() && let Some(stem_step) = chord.stem_step(staves, direction) {
-				let staff = chord.staff();
+			if let Some(&(x, _)) = beam.iter().single() && let Some(stem_step) = chord.stem_step(staves, direction) {
+				let staff = chord.staff().unwrap();
 				let r#type = if let Stem::Down = direction { chord.first() } else { chord.last() }.unwrap().r#type.unwrap();
 				let flag = if let Stem::Down = direction { flag::down } else { flag::up };
 				let flag_anchor = if let Stem::Down = direction { Anchor::StemDownSW } else { Anchor::StemUpNW };
@@ -81,4 +80,26 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 		}
 		for note in chord.iter() { if note.ties.contains(&Tie::Stop) { staves[note.staff()].ties.retain(|&x| x!=note.pitch.unwrap()); } }
 	}
+
+	//float opacity = allTied(beam[0]) ? 1./2 : 1;
+	let format = |beam:&Box<[(_,&Box<[&Note]>)]>| {use itertools::Itertools; format!("{}", beam.iter().format_with("|", |(_,e),f| f(&e.iter().format(" "))))};
+	if let &[(left, first), .., (right, last)] = &*beam && first[0].r#type.unwrap() <= NoteType::Eighth { // Beam (fixme: >2)
+		let right = right + stem_thickness as u32;
+		if !(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff()) { return; }
+		assert!(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff(), "{}", format(&beam));
+		let staff = first.staff().unwrap();
+		if let [Some(first),Some(last)] = [first, last].map(|chord| chord.stem_step(staves, direction)) {
+			let [bottom, top] = [min(first,last),max(first,last)];
+			//unimplemented!();
+			self.measure.graphic.parallelogram(Parallelogram{
+				top_left: xy{x: left as i32, y: self.y(staff, top)},
+				bottom_right: xy{x: right as i32, y: self.y(staff, bottom)},
+				vertical_thickness: self.sheet.engraving_defaults.beam_thickness
+			});
+		}
+	} /*else {
+		for (_, chord) in beam.iter() { for note in chord.iter() {
+			assert!(note.r#type.unwrap() >= NoteType::Quarter, "{}", format(&beam));
+		}}
+	}*/
 }}
