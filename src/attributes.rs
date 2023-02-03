@@ -37,7 +37,7 @@ impl MeasureLayoutContext<'_,'_> {
 				let x = self.x + (width-text.size().x)/2;
 				for Glyph{x: dx, id, ..} in layout(&text.font, text.data.as_ref()) {
 					for index in 0..staves.len() {
-						self.push_glyph_id(x + dx, index, step, 0, id, 1.);
+						self.push_glyph_id(x + dx, index, step, 0, id, 1., num::unit);
 					}
 				}
 			}

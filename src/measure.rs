@@ -1,21 +1,21 @@
-use {derive_more::{Deref, DerefMut}, vector::xy, ui::graphic::{GlyphId, Glyph, Graphic}};
+use {derive_more::{Deref, DerefMut}, num::Ratio, vector::xy, ui::graphic::{GlyphId, Glyph, Graphic}};
 use crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData};
 
 #[derive(Deref)] pub struct Measure<'s,'g> { #[deref] pub sheet: &'s Sheet, pub graphic: Graphic<'g> }
 impl<'s> Measure<'s,'_> {
-	fn new(sheet: &'s Sheet) -> Self { Self{sheet, graphic: Graphic::new(num::Ratio{num:0,div:0})} }
+	fn new(sheet: &'s Sheet) -> Self { Self{sheet, graphic: Graphic::new(Ratio{num:0,div:0})} }
 	fn last_advance(&self) -> i32 { self.graphic.glyphs.iter().map(|g:&Glyph| g.top_left.x + g.face.glyph_hor_advance(g.id).unwrap() as i32).max().unwrap_or(0) }
-	#[track_caller] pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: GlyphId, style: f32) {
+	#[track_caller] pub fn push_glyph_id(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: GlyphId, style: f32, scale: Ratio) {
 		self.graphic.glyphs.push(Glyph{top_left: xy{
 			x: x as i32 + self.sheet.face.glyph_hor_side_bearing(id).unwrap() as i32,
-			y: self.sheet.y(staff_index, step) - self.sheet.face.glyph_bounding_box(id).unwrap().y_max as i32 + dy,
-		}, face: self.sheet.face, id, scale: num::unit, style})
+			y: self.sheet.y(staff_index, step) - scale * self.sheet.face.glyph_bounding_box(id).unwrap().y_max as i32 + dy,
+		}, face: self.sheet.face, id, scale, style})
 	}
-	pub fn push_glyph(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: char, style: f32) {
-		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(id).unwrap(), style)
+	pub fn push_glyph(&mut self, x: u32, staff_index: usize, step: i8, dy: i32, id: char, style: f32, scale: Ratio) {
+		self.push_glyph_id(x, staff_index, step, dy, self.sheet.face.glyph_index(id).unwrap(), style, scale)
 	}
 	pub fn push_glyph_at_pitch(&mut self, x: u32, staff: StaffRef, pitch: &Pitch, id: char, style: f32) {
-		self.push_glyph(x, staff.index, staff.step(pitch), 0, id, style)
+		self.push_glyph(x, staff.index, staff.step(pitch), 0, id, style, num::unit)
 	}
 }
 
