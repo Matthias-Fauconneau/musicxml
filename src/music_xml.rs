@@ -47,7 +47,7 @@ pub type Dynamics = String;
 #[derive(Debug,Clone,Copy,PartialEq)] pub struct Pitch {
 	pub step: Step,
 	pub alter: /*-1..1*/Option<i8>,
-	pub octave: Option</*0-9=4*/u8>,
+	pub octave: /*Option<*//*0-9=4*/u8,//>,
 }
 #[derive(Debug)] pub enum BeamTag { Begin, Continue, End, ForwardHook, BackwardHook }
 #[derive(Debug)] pub struct Beam {
@@ -113,6 +113,10 @@ pub enum Ornament {
 	pub staff: Option<Staff>,
 }
 #[derive(Debug)] pub enum BarStyle { Regular, Dotted, Dashed, Heavy, LightLight, LightHeavy, HeavyHeavy, Tick, Short, None }
+#[derive(Debug)] pub struct Harmony {
+	pub step: Step,
+	pub alter: Option<i8>,
+}
 #[derive(Debug)]
 pub enum MusicData {
 	Note(Note),
@@ -120,7 +124,8 @@ pub enum MusicData {
 	Forward(u32),
 	Attributes(Attributes),
 	Direction(Direction),
-	Barline(Option<BarStyle>)
+	Barline(Option<BarStyle>),
+	Harmony(Harmony)
 	//Print,
 }
 pub type Measure = Box<[MusicData]>;

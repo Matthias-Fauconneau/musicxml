@@ -1,6 +1,4 @@
-use {vector::xy, fehler::throws,
-	crate::music_xml::{Direction, DirectionType, UpDownStopContinue},
-	crate::{font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut},measure::MeasureLayoutContext}};
+use {fehler::throws, vector::xy, crate::{music_xml::{Direction, DirectionType, UpDownStopContinue}, font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut}, measure::MeasureLayoutContext}};
 impl MeasureLayoutContext<'_,'_> {
 	#[throws(as Option)] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { use DirectionType::*; match direction.as_ref()? {
 		Dynamics(dynamic) => {

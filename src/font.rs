@@ -59,13 +59,13 @@ pub(crate) mod bravura {
 			assert_eq!(self.units_per_em(), 1000);
 			use SMuFL::*;
 			use Anchor::*;
-			let anchors = [
-				(note_head::black, vec!(
+			let anchors : [(_, Box<[_]>); _] = [
+				(note_head::black, [
 					(StemDownNW, xy{x: 0, y: 42}),
 					(StemUpSE, xy{x: self.bbox(self.glyph_index(SMuFL::note_head::black).unwrap()).unwrap().max.x-1, y: -42})
-				)),
-				(flag::up, vec!((StemUpNW, xy{x: 0, y:10}))),
-				(flag::down, vec!((StemDownSW, xy{x: 0, y:-33})))
+				].into()),
+				(flag::up, [(StemUpNW, xy{x: 0, y:10})].into()),
+				(flag::down, [(StemDownSW, xy{x: 0, y:-33})].into())
 			];
 			let glyph_anchors = |glyph| &anchors.iter().find(|(id,_)| id == &glyph).unwrap().1;
 			glyph_anchors(glyph).iter().find(|(id,_)| id == &anchor).unwrap().1

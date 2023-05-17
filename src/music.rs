@@ -7,15 +7,15 @@ impl Pitch {
 	pub fn new(clef: &Clef, step: &Step) -> Self {
 		use Step::*;
 		match clef {
-			Clef{sign: Sign::G,..} => Pitch{step: *step, octave: Some(match step { G|A|B => 4, C|D|E|F => 5 }), alter: None},
-			Clef{sign: Sign::F,..} => Pitch{step: *step, octave: Some(match step { A|B => 2, C|D|E|F|G => 3 }), alter: None},
+			Clef{sign: Sign::G,..} => Pitch{step: *step, octave: match step { G|A|B => 4, C|D|E|F => 5 }, alter: None},
+			Clef{sign: Sign::F,..} => Pitch{step: *step, octave: match step { A|B => 2, C|D|E|F|G => 3 }, alter: None},
 		}
 	}
 }
-impl From<&Pitch> for i8 { fn from(pitch: &Pitch) -> Self { (pitch.octave.unwrap_or(4) as i8 - 4)*7 + i8::from(&pitch.step) } }
+impl From<&Pitch> for i8 { fn from(pitch: &Pitch) -> Self { (pitch.octave/*.unwrap_or(4)*/ as i8 - 4)*7 + i8::from(&pitch.step) } }
 
 impl Note {
-    pub fn has_stem(&self) -> bool { self.r#type.unwrap() <= NoteType::Half }
+    pub fn has_stem(&self) -> bool { self.r#type.is_some() && self.r#type.unwrap() <= NoteType::Half }
 }
 pub fn sort_by_key<T, K:Ord, F: Fn(&T) -> K>(iter: impl std::iter::IntoIterator<Item=T>, f: F) -> Box<[T]> { let mut list = list(iter);  list.sort_by_key(f); list }
 pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> Box<[(u32, &'t MusicData)]> {
@@ -27,7 +27,7 @@ pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> Box
 			MusicData::Note(Note{duration: Some(duration), ..}) => { *next_t = std::cmp::max(*next_t, t + duration); /*duration from first (longest)*/},
 			MusicData::Backup(duration) => { assert!(t >= *duration); *next_t = t - duration; },
 			MusicData::Forward(duration) => { *next_t = t + duration; },
-			MusicData::Note(Note{duration: None, ..})|MusicData::Attributes(_)|MusicData::Direction(_)|MusicData::Barline{..}/*|MusicData::Print*/ => {}
+			MusicData::Note(Note{duration: None, ..})|MusicData::Attributes(_)|MusicData::Direction(_)|MusicData::Barline{..}|MusicData::Harmony{..}/*|MusicData::Print*/ => {}
 		}
 		Some((t, music_data))
 	} f}), |&(t,_)| t)

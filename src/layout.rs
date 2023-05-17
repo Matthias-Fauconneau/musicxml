@@ -21,11 +21,12 @@ pub fn layout<'t, 'g>(measures: &'t [music_xml::Measure], size: size) -> Graphic
 				Beam(beam) => measure.beam(&mut staves, &beam),
 				//Beam(beam) => measure.beam(&mut staves, &debug(beam, |t,f| f(&t.iter().format_with("|", |e,f| f(&e.iter().format(" ")))))),
 				MusicData(music_data) => match music_data {
-					//Note(note) => measure.beam(&staves, &[vec![note]]),
+					//Note(note) => measure.beam(&staves, &[[note].into()]),
 					Backup(_) => {},
 					Attributes(attributes) => measure.attributes(&mut staves, attributes),
 					Direction(direction) => { measure.direction(&mut staves, direction); },
 					Barline(_) => {},
+					Harmony(harmony) => { measure.harmony(&mut staves, harmony); }
 					_ => unimplemented!("{music_data}"),
 				}
 			}
