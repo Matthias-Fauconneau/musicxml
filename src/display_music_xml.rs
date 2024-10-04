@@ -32,7 +32,7 @@ impl Display for Note { fn fmt(&self, f: &mut Formatter) -> Result {
     //assert_eq!(self.voice, Some(1));
     //assert_eq!(self.r#type, Some(NoteType::Half));
     if self.r#type.is_none() { write!(f, "{}", match self.duration.unwrap() { 4 => ";", 8 => "-", duration => panic!("{}", duration)})?; return Ok(()) }
-    {use NoteType::*; write!(f, "{}", match self.r#type.unwrap() { Eighth=>",", Quarter=>".", Half=>"o", Whole=>"O", t=>unimplemented!("{t:?}")})?}
+    {use NoteType::*; write!(f, "{}", match self.r#type.unwrap() { _16th=>",,", Eighth=>",", Quarter=>".", Half=>"o", Whole=>"O", t=>unimplemented!("{t:?}")})?}
 	assert!(self.accidental.is_none());
     assert!(self.time_modification.is_none());
     for _ in 0..self.dot { write!(f, ".")?; }

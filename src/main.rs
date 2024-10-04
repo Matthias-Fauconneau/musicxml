@@ -37,12 +37,15 @@ fn main() -> Result {
             clefs: Box::new([Clef{staff: Staff(1), sign: Sign::G, line: None}, Clef{staff: Staff(2), sign: Sign::F, line: None}])
         }),
         MusicData::Harmony(Harmony{step: Step::D, alter: Some(-1)}),
-        MusicData::Note(Note{
-            pitch: Some(Pitch { step: Step::D, alter: None, octave: 4}),
-            r#type: Some(NoteType::Quarter),
-            duration: Some(1),
-            chord: true,
-            voice: None, accidental: None, time_modification: None, dot: 0, ties: [].into(), beams: [].into(), notations: [].into(), staff: Some(Staff(1)), stem: None, grace: false})
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::D, alter: None, octave: 4}), r#type: Some(NoteType::Eighth), duration: Some(1), chord: false, staff: Some(Staff(1)), ..Note::default()}),
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::A, alter: None, octave: 4}), r#type: Some(NoteType::Eighth), duration: Some(1), chord: true, staff: Some(Staff(1)), ..Note::default()}),
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::F, alter: None, octave: 5}), r#type: Some(NoteType::Eighth), duration: Some(1), chord: true, staff: Some(Staff(1)), ..Note::default()}),
+
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::A, alter: None, octave: 4}), r#type: Some(NoteType::_16th), duration: Some(1), chord: false, staff: Some(Staff(1)), ..Note::default()}),
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::F, alter: None, octave: 5}), r#type: Some(NoteType::_16th), duration: Some(1), chord: true, staff: Some(Staff(1)), ..Note::default()}),
+
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::A, alter: None, octave: 4}), r#type: Some(NoteType::_16th), duration: Some(1), chord: false, staff: Some(Staff(1)), ..Note::default()}),
+        MusicData::Note(Note{pitch: Some(Pitch{step: Step::E, alter: None, octave: 5}), r#type: Some(NoteType::_16th), duration: Some(1), chord: true, staff: Some(Staff(1)), ..Note::default()}),
     ].into()].into()};
     use itertools::Itertools; println!("|{}|", music.part[..1].iter().format_with("|\n|",|e,f| f(&e.iter().format("\t"))));
     layout(&music.part[0..1], vector::xy{x: 3840, y: 2400});
