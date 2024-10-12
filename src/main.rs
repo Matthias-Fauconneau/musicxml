@@ -1,5 +1,4 @@
-#![feature(let_chains, anonymous_lifetime_in_impl_trait, lazy_cell, iterator_try_reduce, try_blocks, generic_arg_infer)]
-pub(crate) type Result<T=(),E=Box<dyn std::error::Error>> = std::result::Result<T,E>;
+#![feature(iter_next_chunk, let_chains, try_blocks, generic_arg_infer, anonymous_lifetime_in_impl_trait, iterator_try_reduce)]
 #[allow(dead_code)] mod music_xml; use music_xml::*;
 //mod parse; mod parse_music_xml; use parse_music_xml::parse_utf8; // impl FromElement for MusicXML
 mod display_music_xml; // impl Display for MusicXML
@@ -26,9 +25,17 @@ impl Default for Note {
     }
 }
 
-fn main() -> Result {
-    //let music = parse_utf8(&std::fs::read("../Scores/sheet.musicxml")?)?;
-    let music = Root{work: Work{title: String::new()}, part: [[
+fn main() {
+	std::panic::set_hook(Box::new(|p| {
+		let msg =
+			if let Some(s) = p.payload().downcast_ref::<String>() { s.as_str() }
+			else if let Some(s) = p.payload().downcast_ref::<&str>() { s }
+			else { unreachable!() };
+		println!("{}:{}: {}", p.location().unwrap().file(), p.location().unwrap().line(), msg);
+	}));
+	//let [_,path] = std::env::args().next_chunk().unwrap();	
+	//let music = parse_utf8(&std::fs::read(path)?)?;
+	let music = Root{work: Work{title: String::new()}, part: [[
         MusicData::Attributes(Attributes{
             divisions: Some(2), // per quarter
             key: Some(Key{cancel: None, fifths: -1, mode: Some(Mode::Minor)}),
@@ -48,6 +55,6 @@ fn main() -> Result {
         MusicData::Note(Note{pitch: Some(Pitch{step: Step::E, alter: None, octave: 5}), r#type: Some(NoteType::_16th), duration: Some(1), chord: true, staff: Some(Staff(1)), ..Note::default()}),
     ].into()].into()};
     use itertools::Itertools; println!("|{}|", music.part[..1].iter().format_with("|\n|",|e,f| f(&e.iter().format("\t"))));
-    layout(&music.part[0..1], vector::xy{x: 3840, y: 2400});
+    //layout(&music.part[0..1], vector::xy{x: 3840, y: 2400});
     ui::run(&music.work.title, &mut ui::graphic::Widget(|size| Ok(layout(&music.part[0..1], size))))
 }

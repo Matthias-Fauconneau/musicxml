@@ -78,7 +78,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 			let mut leger = |step| {
 				let EngravingDefaults{leger_line_thickness, leger_line_extension,..} = self.engraving_defaults;
 				let note = chord[0];
-				let note_size = self.face.bbox(self.face.glyph_index(head(note)).unwrap()).unwrap().size();
+				let note_size = self.face.bbox(self.face.glyph_index(head(note)).unwrap()).unwrap().size().unsigned();
 				let x = x - stem_anchor.x as u32;
 				self.measure.graphic.horizontal(self.y(staff, step), leger_line_thickness, x as i32 - leger_line_extension as i32, (x+note_size.x+leger_line_extension) as i32, style(staves, note))
 			};
