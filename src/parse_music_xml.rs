@@ -34,7 +34,7 @@ impl FromStr for NoteType { fn from_str(s: &str) -> Self { use NoteType::*; matc
 	"256th" => _256th,
 	"128th" => _128th,
 	"64th" => _64th,
-	"32th" => _32th,
+	"32nd" => _32nd,
 	"16th" => _16th,
 	"eighth" => Eighth,
     "quarter" => Quarter,
@@ -43,7 +43,7 @@ impl FromStr for NoteType { fn from_str(s: &str) -> Self { use NoteType::*; matc
     "breve" => Breve,
     "long" => Long,
     "maxima" => Maxima,
-    _ => panic!()
+    _ => panic!("{s}")
 }}}
 
 impl FromStr for Accidental { fn from_str(s: &str) -> Self { use Accidental::*; match s {
@@ -83,7 +83,9 @@ impl FromElement for Notation { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self
     "ornaments" => Ornaments(seq(e)),
     "arpeggiate" => Arpeggiate,
     "fermata" => Fermata,
-    notation => panic!("{notation}")
+    "tuplet" => Tuplet(attribute(e, "type")),
+    "glissando" => Glissando(attribute(e, "type")),
+    notation => panic!("notations: {notation}")
 }}}
 
 impl FromStr for StartStopContinue { fn from_str(s: &str) -> Self { use StartStopContinue::*; match s {
@@ -146,7 +148,7 @@ impl FromStr for Stem { fn from_str(s: &str) -> Self { use Stem::*; match s {
 impl FromElement for Pitch { fn from<'t, 'input>(e: Node<'t, 'input>) -> Self { Self{
     step: find(e, "step"),
     alter: option(e, "alter"),
-    octave: option(e, "octave")
+    octave: option(e, "octave").unwrap()
 }}}
 impl FromStr for Step { fn from_str(s: &str) -> Self { use Step::*; match s { "C" => C, "D" => D, "E" => E, "F" => F, "G" => G, "A" => A, "B" => B, _ => panic!() } } }
 impl FromStr for Mode { fn from_str(s: &str) -> Self { use Mode::*; match s { "major" => Major, "minor" => Minor, _ => panic!() } } }
@@ -207,7 +209,8 @@ impl FromElement for DirectionType { fn try_from<'t, 'input>(e: Node<'t, 'input>
 	"words" => Words(FromElement::try_from(e)?),
 	"dynamics" => Dynamics(FromStr::from_str(e.first_element_child().unwrap().tag_name().name())),
 	"wedge" => Wedge(attribute(e, "type")),
-    e => panic!("{e}")
+	"pedal" => Pedal,
+    e => panic!("direction-type: {e}")
 }})}}
 
 impl FromElement for Direction { fn try_from<'t, 'input>(e: Node<'t, 'input>) -> Option<Self> { Some(Self{
@@ -235,5 +238,5 @@ impl FromElement for Work { fn from<'t, 'i>(e: Node<'t, 'i>) -> Self { Self{titl
 impl FromElement for Root { fn from<'t, 'i>(e: Node<'t, 'i>) -> Self { Self{part: find_filter_seq(e, "part", "measure"), work: find(e, "work") } } }
 
 pub fn parse_(document: &Document) -> Option<Root> { FromElement::try_from(document.root_element()) }
-pub fn parse(text: &str) -> Result<Root> { Ok(parse_(&Document::parse(text)?).unwrap()) }
-pub fn parse_utf8(text: &[u8]) -> crate::Result<Root> { Ok(parse(std::str::from_utf8(text)?)?) }
+pub fn parse(text: &str) -> Result<Root> { Ok(parse_(&Document::parse_with_options(text, roxmltree::ParsingOptions{allow_dtd: true, ..Default::default()})?).unwrap()) }
+pub fn parse_utf8(text: &[u8]) -> Result<Root> { Ok(parse(std::str::from_utf8(text).unwrap())?) }

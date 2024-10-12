@@ -38,9 +38,10 @@ pub type Dynamics = String;
 	},
 	Wedge(Wedge),
 	Words(String),
+	Pedal,
 }
 #[derive(Debug, Clone, Copy, derive_more::FromStr, PartialEq)] pub struct Staff(pub /*1-*/u8);
-#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)] pub enum NoteType { _1024th, _512th, _256th, _128th, _64th, _32th, _16th, Eighth, Quarter, Half, Whole, Breve, Long, Maxima}
+#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)] pub enum NoteType { _1024th, _512th, _256th, _128th, _64th, _32nd, _16th, Eighth, Quarter, Half, Whole, Breve, Long, Maxima}
 #[derive(Debug,Clone,Copy,PartialEq)] pub enum Tie { Start, Stop }
 #[derive(Debug,Clone,Copy,PartialEq)] pub enum Stem { Down, Up }
 #[derive(Debug,Clone,Copy,PartialEq)] pub enum Step { C,D,E,F,G,A,B }
@@ -77,6 +78,8 @@ pub enum Ornament {
 	Ornaments(Box<[Ornament]>),
 	Arpeggiate,
 	Fermata,
+	Tuplet(StartStopContinue),
+	Glissando(StartStopContinue),
 }
 #[derive(Debug)] pub struct TimeModification {
 	pub actual_notes: u8,
@@ -108,7 +111,7 @@ pub enum Ornament {
 }
 #[derive(Debug)] pub struct Direction {
 	pub direction: Option<DirectionType>,
-	pub offset: Option<u16>,
+	pub offset: Option<i16>,
 	pub voice: Option<u8>,
 	pub staff: Option<Staff>,
 }

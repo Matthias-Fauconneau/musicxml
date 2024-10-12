@@ -35,5 +35,6 @@ impl MeasureLayoutContext<'_,'_> {
 		Metronome{..} => {},
 		Wedge(_) => {},
 		Words(_) => {},
+		Pedal => {},
 	}
 }}

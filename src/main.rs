@@ -1,6 +1,6 @@
 #![feature(iter_next_chunk, let_chains, try_blocks, generic_arg_infer, anonymous_lifetime_in_impl_trait, iterator_try_reduce)]
 #[allow(dead_code)] mod music_xml; use music_xml::*;
-//mod parse; mod parse_music_xml; use parse_music_xml::parse_utf8; // impl FromElement for MusicXML
+mod parse; mod parse_music_xml; use parse_music_xml::parse_utf8; // impl FromElement for MusicXML
 mod display_music_xml; // impl Display for MusicXML
 pub fn list<T>(iter: impl std::iter::IntoIterator<Item=T>) -> Box<[T]> { iter.into_iter().collect() }
 mod music;
@@ -33,9 +33,9 @@ fn main() {
 			else { unreachable!() };
 		println!("{}:{}: {}", p.location().unwrap().file(), p.location().unwrap().line(), msg);
 	}));
-	//let [_,path] = std::env::args().next_chunk().unwrap();	
-	//let music = parse_utf8(&std::fs::read(path)?)?;
-	let music = Root{work: Work{title: String::new()}, part: [[
+	let [_,path] = std::env::args().next_chunk().unwrap();	
+	let music = parse_utf8(&std::fs::read(path).unwrap()).unwrap();
+	/*let music = Root{work: Work{title: String::new()}, part: [[
         MusicData::Attributes(Attributes{
             divisions: Some(2), // per quarter
             key: Some(Key{cancel: None, fifths: -1, mode: Some(Mode::Minor)}),
@@ -53,8 +53,7 @@ fn main() {
 
         MusicData::Note(Note{pitch: Some(Pitch{step: Step::A, alter: None, octave: 4}), r#type: Some(NoteType::_16th), duration: Some(1), chord: false, staff: Some(Staff(1)), ..Note::default()}),
         MusicData::Note(Note{pitch: Some(Pitch{step: Step::E, alter: None, octave: 5}), r#type: Some(NoteType::_16th), duration: Some(1), chord: true, staff: Some(Staff(1)), ..Note::default()}),
-    ].into()].into()};
+    ].into()].into()};*/
     use itertools::Itertools; println!("|{}|", music.part[..1].iter().format_with("|\n|",|e,f| f(&e.iter().format("\t"))));
-    //layout(&music.part[0..1], vector::xy{x: 3840, y: 2400});
     ui::run(&music.work.title, &mut ui::graphic::Widget(|size| Ok(layout(&music.part[0..1], size))))
 }
