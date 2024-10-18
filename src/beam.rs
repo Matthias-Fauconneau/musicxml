@@ -1,12 +1,16 @@
-//use iter::Single;
-/*pub trait Single: Iterator+Sized { fn single(mut self) -> Option<Self::Item> { self.next().filter(|_| self.next().is_none()) } }
-impl<I:Iterator> Single for I {}*/
+use {std::cmp::{min,max}, vector::{reduce_minmax, MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
+use music::{
+	Note, NoteType, Stem, Tie,
+	font::{SMuFont, SMuFL::{Anchor, note_head, flag, EngravingDefaults}},
+	staff::{Staff, Index, IndexMut, minmax, Chord}
+};
+use crate::measure::MeasureLayoutContext;
 
-use {std::cmp::{min,max}, crate::{music_xml::Note, staff::Staff, measure::MeasureLayoutContext, font::SMuFL::EngravingDefaults}};
+pub fn list<T>(iter: impl std::iter::IntoIterator<Item=T>) -> Box<[T]> { iter.into_iter().collect() }
+
+fn head(note: &Note) -> char {use {NoteType::*, note_head::*}; match note.r#type.unwrap() {Breve=>breve, Whole=>whole, Half=>half, _=>black}}
+
 impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], beam: &[Box<[&Note]>]) {
-	use crate::{music_xml::{NoteType, Stem, Tie}, font::{SMuFont, SMuFL::{Anchor, note_head, flag}}};
-	let head = |note:&Note| {use {NoteType::*, note_head::*}; match note.r#type.unwrap() { Breve=>breve, Whole=>whole, Half=>half, _=>black }};
-	use {crate::list, vector::{reduce_minmax, MinMax, xy}, ui::graphic::{Rect, Parallelogram}, crate::staff::{Index, IndexMut, minmax, Chord}};
 
 	let beam = list(beam.iter().scan(self.x, |x, chord| {
 		let note = *x;
@@ -19,7 +23,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 
 	for (x, chord) in beam.iter() {
 		for note in chord.iter() { // Heads
-			let note@Note{staff: Some(staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
+			let note@&&Note{staff: Some(ref staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
 			self.push_glyph_at_pitch(*x, staves.index(*staff), pitch, head(note), style(staves, note));
 			if note.ties.contains(&Tie::Start) { staves.index_mut(*staff).ties.push(note.pitch.unwrap()) }
 		}
@@ -31,7 +35,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 	let stem_anchor = if let Stem::Down = direction { Anchor::StemDownNW } else { Anchor::StemUpSE };
 	let stem_anchor = self.sheet.face.anchor(note_head::black, stem_anchor);
 	let stem_thickness = self.sheet.engraving_defaults.stem_thickness;
-	for (_, chord) in beam.iter() { for note in chord.iter() { assert!(note.time_modification.is_none() /*&& note.dot==0*/); } }
+	//for (_, chord) in beam.iter() { for note in chord.iter() { assert!(note.time_modification.is_none() /*&& note.dot==0*/); } }
 	let beam = list(beam.iter().map(|(note, chord)| (note + stem_anchor.x as u32, *chord)));
 
 	let stem = |m: &mut Self, staves:&[Staff], staff, style, x: u32, chord:&[&Note]| {
@@ -43,32 +47,32 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 		};
 	};
 
-	let beamed : Option<_> = try {
-		if let &[(left, first), .., (right, last)] = &*beam && first[0].r#type.unwrap() <= NoteType::Eighth { // Beam (fixme: >2)
-			if !(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff()) { None? }
-			assert!(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff());
-			let staff = first.staff().unwrap();
-			stem(self, staves, staff, 1., left, first);
-			stem(self, staves, staff, 1., right, last);
-			let left = if direction==Stem::Down { left } else { left - stem_thickness };
-			let right = if direction==Stem::Down { right + stem_thickness*2/3 } else { right - stem_thickness/2 };
-			let [Some(first),Some(last)] = [first, last].map(|chord| chord.stem_step(staves, direction)) else { None? };
+	let beamed = if let &[(left, first), .., (right, last)] = &*beam && first[0].r#type.unwrap() <= NoteType::Eighth  // Beam (fixme: >2)
+		&& !(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff()) {
+		assert!(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff());
+		let staff = first.staff().unwrap();
+		stem(self, staves, staff, 1., left, first);
+		stem(self, staves, staff, 1., right, last);
+		let left = if direction==Stem::Down { left } else { left - stem_thickness };
+		let right = if direction==Stem::Down { right + stem_thickness*2/3 } else { right - stem_thickness/2 };
+		if let [Some(first),Some(last)] = [first, last].map(|chord| chord.stem_step(staves, direction)) {
 			let [first, last] = [first, last].map(|step| self.y(staff, step));
 			self.measure.graphic.parallelogram(Parallelogram{
 				top_left: xy{x: left as i32, y: min(first, last)-stem_thickness as i32},
-				bottom_right: xy{x: right as i32, y: max(first, last)},
+				bottom_right: xy{x: right.try_into().unwrap(), y: max(first, last)},
 				descending: first<last,
 				vertical_thickness: self.sheet.engraving_defaults.beam_thickness
 			});
-		} else { None? }
-	};
+			true
+		} else { false }
+	} else { false };
 
 	for (x, chord) in beam.iter() {
 		let x = *x;
 		#[allow(non_upper_case_globals)] const tie: f32 = 1./16.;
 		let style = |staves:&[_], Note{staff, pitch, ties, ..}:&Note| if ties.contains(&Tie::Stop) && staves.index(staff.unwrap()).ties.iter().any(|x| x == &pitch.unwrap()) { tie } else { 1. };
 		for note in chord.iter() { // Heads
-			let note@Note{staff: Some(staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
+			let note@&&Note{staff: Some(ref staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
 			self.push_glyph_at_pitch(x - stem_anchor.x as u32, staves.index(*staff), pitch, head(note), style(staves, note));
 			if note.ties.contains(&Tie::Start) { staves.index_mut(*staff).ties.push(note.pitch.unwrap()) }
 		}
@@ -86,7 +90,7 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 				for step in (10..=max).step_by(2) { leger(step) }
 				for step in (min..=-2).step_by(2) { leger(step) }
 			}
-			if beamed.is_none() {
+			if !beamed {
 				// Stem
 				let Some(note) = chord.first() else { continue; };
 				let style = if note.ties.contains(&Tie::Stop) { tie } else { 1. };

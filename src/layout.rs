@@ -1,7 +1,8 @@
 use {vector::{xy, size}, ui::{Ratio, Graphic}};
-use crate::{music_xml::{self, MusicData::*}, sheet::Sheet, staff::Staff, music::*, measure::Measure};
-use crate::{measure::{MeasureLayoutContext,MusicLayoutContext}, font::SMuFL::EngravingDefaults};
-pub fn layout<'t, 'g>(measures: &'t [music_xml::Measure], size: size) -> Graphic<'g> {
+use music::{*, MusicData::*, font::SMuFL::EngravingDefaults};
+use crate::measure::{Measure, MeasureLayoutContext,MusicLayoutContext};
+
+pub fn layout<'t, 'g>(measures: &'t [music::Measure], size: size) -> Graphic<'g> {
 	let sheet = Sheet::new();
 	let EngravingDefaults{thin_barline_thickness, ..} = sheet.engraving_defaults;
 	let scale = Ratio{num: 150, div: sheet.staff_height};

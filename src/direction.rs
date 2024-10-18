@@ -1,6 +1,9 @@
-use {fehler::throws, vector::xy, crate::{music_xml::{Direction, DirectionType, UpDownStopContinue}, font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut}, measure::MeasureLayoutContext}};
+use vector::xy;
+use music::{Direction, DirectionType, UpDownStopContinue, font::SMuFL::EngravingDefaults, staff::{Staff, IndexMut}};
+use crate::measure::MeasureLayoutContext;
+
 impl MeasureLayoutContext<'_,'_> {
-	#[throws(as Option)] pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) { use DirectionType::*; match direction.as_ref()? {
+	pub fn direction(&mut self, staves: &mut [Staff], Direction{direction, staff, ..}: &Direction) -> Option<()> { use DirectionType::*; Some(match direction.as_ref()? {
 		Dynamics(dynamic) => {
 			let face = ui::text::default_font()[0]; // TODO: italic
 			use ui::{graphic, text::{Plain, View, layout, Glyph}};
@@ -36,5 +39,5 @@ impl MeasureLayoutContext<'_,'_> {
 		Wedge(_) => {},
 		Words(_) => {},
 		Pedal => {},
-	}
+	})
 }}

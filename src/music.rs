@@ -1,5 +1,5 @@
 // Opiniated features for MusicXML
-use {crate::list, itertools::Itertools, crate::music_xml::{Step, Sign, Clef, Pitch, Note, NoteType, MusicData}};
+use {itertools::Itertools, crate::music_xml::{Step, Sign, Clef, Pitch, Note, NoteType, MusicData}};
 
 impl From<&Step> for i8 { fn from(step: &Step) -> Self { use Step::*; match step { C=>0, D=>1, E=>2, F=>3, G=>4, A=>5, B=>6 } } }
 
@@ -17,7 +17,9 @@ impl From<&Pitch> for i8 { fn from(pitch: &Pitch) -> Self { (pitch.octave/*.unwr
 impl Note {
     pub fn has_stem(&self) -> bool { self.r#type.is_some() && self.r#type.unwrap() <= NoteType::Half }
 }
-pub fn sort_by_key<T, K:Ord, F: Fn(&T) -> K>(iter: impl std::iter::IntoIterator<Item=T>, f: F) -> Box<[T]> { let mut list = list(iter);  list.sort_by_key(f); list }
+pub fn sort_by_key<T, K:Ord, F: Fn(&T) -> K>(iter: impl std::iter::IntoIterator<Item=T>, f: F) -> Box<[T]> {
+	let mut list = Box::from_iter(iter);  list.sort_by_key(f); list
+}
 pub fn sort_by_start_time<'t, I: IntoIterator<Item=&'t MusicData>>(it: I) -> Box<[(u32, &'t MusicData)]> {
 	sort_by_key(it.into_iter().scan((0,0), {fn f<'t>( (t, next_t) : &mut (u32, u32), music_data: &'t MusicData) -> Option<(u32, &'t MusicData)> {
 		if !matches!(music_data, MusicData::Note(Note{chord: true, ..})) { *t = *next_t; } // Normal progress

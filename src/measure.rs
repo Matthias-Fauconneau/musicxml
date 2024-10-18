@@ -1,5 +1,5 @@
 use {derive_more::{Deref, DerefMut}, num::Ratio, vector::xy, ui::graphic::{GlyphId, Glyph, Graphic}};
-use crate::{sheet::Sheet, music_xml::Pitch, staff::StaffRef, music::BeamedMusicData};
+use music::{Pitch, Sheet, StaffRef, BeamedMusicData};
 
 #[derive(Deref)] pub struct Measure<'s,'g> { #[deref] pub sheet: &'s Sheet, pub graphic: Graphic<'g> }
 impl<'s> Measure<'s,'_> {
