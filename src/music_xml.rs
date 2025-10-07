@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Work {
 	pub title: String
 }
@@ -133,6 +134,7 @@ pub enum MusicData {
 }
 pub type Measure = Box<[MusicData]>;
 pub type Part = Box<[Measure]>;
+#[derive(Debug)]
 pub struct Root {
 	pub work: Work,
 	pub part: Part,

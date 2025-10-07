@@ -1,4 +1,4 @@
-use {derive_more::{Deref, DerefMut}, vector::{MinMax}, crate::{music_xml::{self, Clef, Sign, Pitch, Note, Stem}}};
+use {vector::MinMax, crate::{music_xml::{self, Clef, Sign, Pitch, Note, Stem}}};
 
 #[derive(Default, Debug)] pub struct Staff {
 	pub clef: Option<Clef>,
@@ -9,18 +9,21 @@ use {derive_more::{Deref, DerefMut}, vector::{MinMax}, crate::{music_xml::{self,
 
 impl From<music_xml::Staff> for usize { fn from(staff: music_xml::Staff) -> Self { (2 - staff.0) as usize } } // 1..2 -> 1: treble .. 0: bass
 
-#[derive(Deref)] pub struct StaffRef<'t> { pub index: usize, #[deref] pub staff: &'t Staff }
-pub trait Index { fn index(&self, index: music_xml::Staff) -> StaffRef; }
+pub struct StaffRef<'t> { pub index: usize, pub staff: &'t Staff }
+impl<'t> std::ops::Deref for StaffRef<'t> { type Target = &'t Staff; fn deref(&self) -> &Self::Target { &self.staff } }
+pub trait Index { fn index(&'_ self, index: music_xml::Staff) -> StaffRef<'_>; }
 impl Index for [Staff] {
-	fn index(&self, index: music_xml::Staff) -> StaffRef { let index = index.into(); StaffRef{index, staff: &self[index]} }
+	fn index(&'_ self, index: music_xml::Staff) -> StaffRef<'_> { let index = index.into(); StaffRef{index, staff: &self[index]} }
 }
 
-#[derive(Deref, DerefMut)] pub struct StaffMut<'t> { index: usize, #[deref]#[deref_mut] staff: &'t mut Staff }
-pub trait IndexMut { fn index_mut(&mut self, index: music_xml::Staff) -> StaffMut; }
+pub struct StaffMut<'t> { index: usize, staff: &'t mut Staff }
+impl<'t> std::ops::Deref for StaffMut<'t> { type Target = &'t mut Staff; fn deref(&self) -> &Self::Target { &self.staff } }
+impl<'t> std::ops::DerefMut for StaffMut<'t> { fn deref_mut(&mut self) -> &mut Self::Target { &mut self.staff } }
+pub trait IndexMut { fn index_mut(&'_ mut self, index: music_xml::Staff) -> StaffMut<'_>; }
 impl IndexMut for [Staff] {
-	fn index_mut(&mut self, index: music_xml::Staff) -> StaffMut { let index = index.into(); StaffMut{index, staff: &mut self[index]} }
+	fn index_mut(&'_ mut self, index: music_xml::Staff) -> StaffMut<'_> { let index = index.into(); StaffMut{index, staff: &mut self[index]} }
 }
-impl StaffMut<'_> { pub fn as_ref(&self) -> StaffRef { StaffRef{index: self.index, staff: &self.staff} } }
+impl StaffMut<'_> { pub fn as_ref(&'_ self) -> StaffRef<'_> { StaffRef{index: self.index, staff: &self.staff} } }
 
 impl Staff {
 	#[allow(non_snake_case)]

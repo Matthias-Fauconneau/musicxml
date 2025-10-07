@@ -1,1 +1,1 @@
-[{"label": "Superman", "command": "cargo run --release ~/Superman.xml", "hide": "on_success", "current_working_directory":"/home/matthias/musicxml"}]
+[{"label": "Run", "command": "cargo run sheet.xml", "hide": "on_success"}]

@@ -1,12 +1,12 @@
-use {derive_more::Deref, vector::Rect, ui::font::Face, crate::font::{SMuFont, SMuFL::EngravingDefaults}};
+use {vector::Rect, ui::font::Face, crate::font::{SMuFont, SMuFL::EngravingDefaults}};
 
-#[derive(Deref)]
 pub struct Sheet {
-	#[deref] pub face: &'static Face<'static>,
+	pub face: &'static Face<'static>,
 	pub engraving_defaults: EngravingDefaults,
 	pub staff_height: u32,
 	pub staff_distance: u32
 }
+impl<'t> std::ops::Deref for Sheet { type Target = &'static Face<'static>; fn deref(&self) -> &Self::Target { &self.face } }
 impl Sheet {
 	pub fn new_with_face(face: &'static Face) -> Self {
 		let staff_height = face.units_per_em() as u32;
@@ -19,7 +19,7 @@ impl Sheet {
 		}
 	}
 	pub fn new() -> Self {
-		#[allow(non_upper_case_globals)] static face: std::sync::LazyLock<ui::font::File<'static>> = std::sync::LazyLock::new(|| ui::font::open(std::path::Path::new(&"/usr/share/fonts/OTF/Bravura.otf")).unwrap());
+		#[allow(non_upper_case_globals)] static face: std::sync::LazyLock<ui::font::File<'static>> = std::sync::LazyLock::new(|| ui::font::open(std::path::Path::new(&"Bravura.otf")).unwrap());
 		Self::new_with_face(&face)
     }
 	// staff: 0: bass .. 1: treble; step: 0: bottom .. 8: top

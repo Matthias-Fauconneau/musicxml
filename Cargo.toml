@@ -1,13 +1,23 @@
-cargo-features=['edition2024']
 package={name='music', version='0.0.0', edition='2024'}
+build-dependencies={wgsl={git='https://github.com/Matthias-Fauconneau/ui'}}
 
 [dependencies]
 roxmltree='*'
 itertools='*'
-derive-more={package='derive_more', version='*', features=['from_str','deref_mut']}
+derive-more={package='derive_more', version='*', features=['from_str']}
 num={git='https://github.com/Matthias-Fauconneau/num'}
 vector={git='https://github.com/Matthias-Fauconneau/vector'}
-ui={git='https://github.com/Matthias-Fauconneau/ui'}
+ui={git='https://github.com/Matthias-Fauconneau/ui', features=['text','graphic']}
+
+bytemuck='*'
+vulkano = { git='https://github.com/vulkano-rs/vulkano', default-features=false, features=['macros'] }
+vulkano-spirv = { git='https://github.com/Matthias-Fauconneau/vulkano-spirv' }
+[patch.'https://github.com/vulkano-rs/vulkano']
+vulkano = { git='https://github.com/Matthias-Fauconneau/vulkano'  } # drm modifier
 
 [patch.'https://github.com/Matthias-Fauconneau/ui']
 ui={path='../ui'}
+
+[profile.dev]
+opt-level = 1
+overflow-checks = false
