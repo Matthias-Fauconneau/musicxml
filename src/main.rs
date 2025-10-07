@@ -17,5 +17,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}));
 	let [_,path] = std::env::args().next_chunk().unwrap();
 	let music = music::parse_utf8(&std::fs::read(path).unwrap()).unwrap();
-    ui::run(&music.work.title, Box::new(|_,_| Ok(Box::new(ui::graphic::Widget(|size| Ok(layout(&music.part[0..2], size)))))))
+    ui::run(&music.work.title, Box::new(|_,_| Ok(Box::new(ui::graphic::Widget(|size| Ok(layout(&music.part[0..8], size)))))))
 }

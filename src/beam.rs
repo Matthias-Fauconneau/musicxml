@@ -1,4 +1,4 @@
-use {std::cmp::{min,max}, vector::{reduce_minmax, MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
+use {vector::{reduce_minmax, MinMax, xy}, ui::graphic::{Rect, Parallelogram}};
 use music::{
 	Note, NoteType, Stem, Tie,
 	font::{SMuFont, SMuFL::{Anchor, note_head, flag, EngravingDefaults}},
@@ -22,6 +22,20 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 	let style = |staves:&[_], Note{staff, pitch, ties, ..}:&Note| if ties.contains(&Tie::Stop) && staves.index(staff.unwrap()).ties.iter().any(|x| x == &pitch.unwrap()) { tie } else { 1. };
 
 	for (x, chord) in beam.iter() {
+		for (staff, _) in staves.iter().enumerate() {
+			let chord = list(chord.into_iter().filter(|x| x.staff() ==staff).copied());
+			// Legers
+			let mut leger = |step| {
+				let EngravingDefaults{leger_line_thickness, leger_line_extension,..} = self.engraving_defaults;
+				let note = chord[0];
+				let note_size = self.face.bbox(self.face.glyph_index(head(note)).unwrap()).unwrap().size().unsigned();
+				self.measure.graphic.horizontal(self.y(staff, step), leger_line_thickness, *x as i32 - leger_line_extension as i32, (x+note_size.x+leger_line_extension) as i32, style(staves, note))
+			};
+			if let Some(MinMax{min,max}) = chord.minmax_staff(staves, staff) {
+				for step in (10..=max).step_by(2) { leger(step) }
+				for step in (min..=-2).step_by(2) { leger(step) }
+			}
+		}
 		for note in chord.iter() { // Heads
 			let note@&&Note{staff: Some(ref staff), pitch: Some(ref pitch), ..} = note else { continue;/*pause*/ };
 			self.push_glyph_at_pitch(*x, staves.index(*staff), pitch, head(note), style(staves, note));
@@ -36,31 +50,40 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 	let stem_anchor = self.sheet.face.anchor(note_head::black, stem_anchor);
 	let stem_thickness = self.sheet.engraving_defaults.stem_thickness;
 	//for (_, chord) in beam.iter() { for note in chord.iter() { assert!(note.time_modification.is_none() /*&& note.dot==0*/); } }
-	let beam = list(beam.iter().map(|(note, chord)| (note + stem_anchor.x as u32, *chord)));
+	let beam /*[x; chord]*/ = list(beam.iter().map(|(note, chord)| (note + stem_anchor.x as u32, *chord)));
 
-	let stem = |m: &mut Self, staves:&[Staff], staff, style, x: u32, chord:&[&Note]| {
+	let stem = |m: &mut Self, staves:&[Staff], staff, style, x: u32, chord:&[&Note], y: Option<i32>| {
 		let Some(MinMax{min: bottom, max: top}) = minmax(chord.into_iter().filter(|x| x.has_stem()).copied(), staves) else {return;};
 		if let Stem::Down = direction { // Bottom Left
-			m.measure.graphic.rect(Rect{min: xy{x: x as i32, y: m.y(staff, top)+stem_anchor.y}, max: xy{x: x as i32 + stem_thickness as i32, y: m.y(staff, bottom-5)}}, style);
+			m.measure.graphic.rect(Rect{
+				min: xy{x: x as i32, y: m.y(staff, top)+stem_anchor.y}, 
+				max: xy{x: x as i32 + stem_thickness as i32, y: y.unwrap_or(m.y(staff, bottom-5))}
+			}, style);
 		} else { // Top Right
-			m.measure.graphic.rect(Rect{min: xy{x: x as i32 - stem_thickness as i32, y: m.y(staff, top+5)}, max: xy{x: x as i32, y: m.y(staff, bottom)+stem_anchor.y}}, style);
+			m.measure.graphic.rect(Rect{
+				min: xy{x: x as i32 - stem_thickness as i32, y: y.unwrap_or(m.y(staff, top+5))}, 
+				max: xy{x: x as i32, y: m.y(staff, bottom)+stem_anchor.y}}, style);
 		};
 	};
 
 	let beamed = if let &[(left, first), .., (right, last)] = &*beam && first[0].r#type.unwrap() <= NoteType::Eighth  // Beam (fixme: >2)
-		&& !(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff()) {
-		assert!(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff());
-		let staff = first.staff().unwrap();
-		stem(self, staves, staff, 1., left, first);
-		stem(self, staves, staff, 1., right, last);
+		{//&& !(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff())/*?*/ {
+		//assert!(first.staff().is_some() && last.staff().is_some() && first.staff() == last.staff(), "{:?} {:?} {beam:?}",first.staff(), last.staff());
+		let staff = first[0].staff.unwrap().into(); // FIXME
+		stem(self, staves, staff, 1., left, first, None);
+		stem(self, staves, staff, 1., right, last, None);
 		let left = if direction==Stem::Down { left } else { left - stem_thickness };
 		let right = if direction==Stem::Down { right + stem_thickness*2/3 } else { right - stem_thickness/2 };
 		if let [Some(first),Some(last)] = [first, last].map(|chord| chord.stem_step(staves, direction)) {
 			let [first, last] = [first, last].map(|step| self.y(staff, step));
+			for (i, (x, chord)) in beam[1..beam.len()-1].iter().enumerate() {
+				let y = first + (last-first) * (1+i as i32) / (beam.len()-1) as i32;
+				stem(self, staves, staff, 1., *x, chord, Some(y));
+			}
 			self.measure.graphic.parallelogram(Parallelogram{
-				top_left: xy{x: left as i32, y: min(first, last)-stem_thickness as i32},
-				bottom_right: xy{x: right.try_into().unwrap(), y: max(first, last)},
-				descending: first<last,
+				top_left: xy{x: left as i32, y: first/*min(first, last)*//*-stem_thickness as i32*/},
+				bottom_right: xy{x: right.try_into().unwrap(), y: last/*max(first, last)*/},
+				descending: first>last,
 				vertical_thickness: self.sheet.engraving_defaults.beam_thickness
 			});
 			true
@@ -78,23 +101,11 @@ impl MeasureLayoutContext<'_,'_> { pub fn beam(&mut self, staves: &mut [Staff], 
 		}
 		for (staff, _) in staves.iter().enumerate() {
 			let chord = list(chord.into_iter().filter(|x| x.staff() ==staff).copied());
-			// Legers
-			let mut leger = |step| {
-				let EngravingDefaults{leger_line_thickness, leger_line_extension,..} = self.engraving_defaults;
-				let note = chord[0];
-				let note_size = self.face.bbox(self.face.glyph_index(head(note)).unwrap()).unwrap().size().unsigned();
-				let x = x - stem_anchor.x as u32;
-				self.measure.graphic.horizontal(self.y(staff, step), leger_line_thickness, x as i32 - leger_line_extension as i32, (x+note_size.x+leger_line_extension) as i32, style(staves, note))
-			};
-			if let Some(MinMax{min,max}) = chord.minmax(staves) {
-				for step in (10..=max).step_by(2) { leger(step) }
-				for step in (min..=-2).step_by(2) { leger(step) }
-			}
 			if !beamed {
 				// Stem
 				let Some(note) = chord.first() else { continue; };
 				let style = if note.ties.contains(&Tie::Stop) { tie } else { 1. };
-				stem(self, staves, staff, style, x, &chord);
+				stem(self, staves, staff, style, x, &chord, None);
 				// Flag
 				if /*let Some(&(x, _)) = beam.iter().single() &&*/ let Some(stem_step) = chord.stem_step(staves, direction) {
 					let staff = chord.staff().unwrap();
